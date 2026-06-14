@@ -45,8 +45,23 @@ export default async function ReaderPage({ params }: { params: Params }) {
   const brief = await getPublicBrief(showSlug, episodeSlug);
   if (!brief) notFound();
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: brief.episode.title,
+    description: brief.tldr ?? undefined,
+    datePublished: brief.episode.publishedAt ?? brief.publishedAt ?? undefined,
+    author: { "@type": "Organization", name: brief.show.title },
+    publisher: { "@type": "Organization", name: "PodBrief" },
+    isBasedOn: brief.episode.youtubeUrl ?? brief.show.websiteUrl ?? undefined,
+  };
+
   return (
     <main className="flex-1">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <div className="mx-auto flex max-w-2xl items-center justify-between px-6 py-4">
         <Link href="/" className="text-sm font-semibold tracking-tight">
           PodBrief
@@ -58,7 +73,7 @@ export default async function ReaderPage({ params }: { params: Params }) {
           Browse shows
         </Link>
       </div>
-      <BriefReader brief={brief} showSave />
+      <BriefReader brief={brief} />
       <MarkReadOnView briefId={brief.id} />
     </main>
   );

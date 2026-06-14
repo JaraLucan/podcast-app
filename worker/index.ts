@@ -10,6 +10,7 @@ import { config } from "dotenv";
 import { createServiceClient } from "@/lib/supabase/service";
 import { claimJob, completeJob, failJob } from "@/lib/jobs/queue";
 import { runJob } from "@/lib/jobs/handlers";
+import { reportError } from "@/lib/observability";
 
 config({ path: ".env.local" });
 
@@ -53,7 +54,7 @@ async function loop() {
     } catch (err) {
       const message = (err as Error).message ?? String(err);
       await failJob(db, job, message);
-      console.error(`✗ job ${job.id}: ${message}`);
+      await reportError(err, { jobId: job.id, type: job.type });
     }
   }
   console.log("Worker stopped.");

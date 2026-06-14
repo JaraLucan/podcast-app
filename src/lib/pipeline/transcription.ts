@@ -169,6 +169,73 @@ export async function transcribeWithGroq(
   }
 }
 
+type DeepgramResponse = {
+  metadata?: { duration?: number };
+  results?: {
+    utterances?: { start: number; end: number; transcript: string }[];
+    channels?: { alternatives?: { transcript?: string }[] }[];
+  };
+};
+
+const DEEPGRAM_MODEL = process.env.DEEPGRAM_MODEL ?? "nova-2";
+const DEEPGRAM_USD_PER_HOUR = 0.258; // nova-2 pre-recorded, approx
+
+/**
+ * Deepgram transcription via remote-URL ingestion — no download or ffmpeg
+ * needed, and it returns speaker-friendly utterances with timestamps. Enable
+ * with TRANSCRIPTION_PROVIDER=deepgram (PRD §5.2).
+ */
+export async function transcribeWithDeepgram(
+  audioUrl: string,
+): Promise<TranscriptResult> {
+  const key = process.env.DEEPGRAM_API_KEY;
+  if (!key) throw new Error("DEEPGRAM_API_KEY is not set");
+
+  const params = new URLSearchParams({
+    model: DEEPGRAM_MODEL,
+    smart_format: "true",
+    punctuate: "true",
+    utterances: "true",
+  });
+  const res = await fetch(`https://api.deepgram.com/v1/listen?${params}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Token ${key}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ url: audioUrl }),
+  });
+  if (!res.ok) {
+    throw new Error(`Deepgram failed (${res.status}): ${await res.text()}`);
+  }
+
+  const data = (await res.json()) as DeepgramResponse;
+  const utterances = data.results?.utterances ?? [];
+  const segments: TranscriptSegment[] = utterances.map((u) => ({
+    start: u.start,
+    end: u.end,
+    text: u.transcript,
+  }));
+
+  const fullText =
+    segments.map((s) => s.text.trim()).join(" ").trim() ||
+    (data.results?.channels?.[0]?.alternatives?.[0]?.transcript ?? "");
+  const wordCount = fullText.split(/\s+/).filter(Boolean).length;
+  const duration = data.metadata?.duration ?? segments.at(-1)?.end ?? 0;
+  const costUsd =
+    Math.round((duration / 3600) * DEEPGRAM_USD_PER_HOUR * 1e6) / 1e6;
+
+  return { source: "deepgram", segments, fullText, wordCount, costUsd };
+}
+
+/** Transcribe via the configured provider (PRD §5.2: Groq primary, Deepgram fallback). */
+export async function transcribe(audioUrl: string): Promise<TranscriptResult> {
+  const provider = process.env.TRANSCRIPTION_PROVIDER ?? "groq";
+  return provider === "deepgram"
+    ? transcribeWithDeepgram(audioUrl)
+    : transcribeWithGroq(audioUrl);
+}
+
 /** Build a Taddy-sourced transcript from pre-supplied segments (free). */
 export function transcriptFromSegments(
   segments: TranscriptSegment[],

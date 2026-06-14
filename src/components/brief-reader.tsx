@@ -9,7 +9,7 @@ import {
   youtubeTimestampUrl,
 } from "@/lib/utils/format";
 
-import { SaveButton } from "./save-button";
+import { HydratedSaveButton } from "./hydrated-save-button";
 import { ShareButton } from "./share-button";
 import { ShowAvatar } from "./show-avatar";
 
@@ -37,13 +37,7 @@ function Timestamp({
   return <span className="font-mono text-sm text-neutral-400">{label}</span>;
 }
 
-export function BriefReader({
-  brief,
-  showSave,
-}: {
-  brief: BriefListItem;
-  showSave: boolean;
-}) {
+export function BriefReader({ brief }: { brief: BriefListItem }) {
   const listenUrl =
     brief.episode.youtubeUrl ??
     brief.show.websiteUrl ??
@@ -95,7 +89,7 @@ export function BriefReader({
             ▶ Listen to the full episode
           </a>
         )}
-        {showSave && <SaveButton briefId={brief.id} saved={brief.isSaved} />}
+        <HydratedSaveButton briefId={brief.id} />
         <ShareButton title={brief.episode.title} />
       </div>
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { enqueueAllActiveShows } from "@/lib/pipeline/ingest";
+import { reportError } from "@/lib/observability";
 import { createServiceClient } from "@/lib/supabase/service";
 
 // Vercel Cron hits this every 30 min (see vercel.json). Enqueues an ingest job
@@ -26,6 +27,7 @@ export async function GET(request: Request) {
     const count = await enqueueAllActiveShows(db);
     return NextResponse.json({ ok: true, enqueued_shows: count });
   } catch (err) {
+    await reportError(err, { route: "cron/poll-feeds" });
     return NextResponse.json(
       { ok: false, error: (err as Error).message },
       { status: 500 },

@@ -242,6 +242,20 @@ export async function getPublicBrief(
   return mapBrief(data as unknown as RawBrief, new Set(), new Set());
 }
 
+/** Latest published briefs across all shows (landing page + RSS feed). */
+export async function getLatestBriefs(limit = 6): Promise<BriefListItem[]> {
+  const supabase = createPublicClient();
+  const { data } = await supabase
+    .from("briefs")
+    .select(BRIEF_SELECT)
+    .not("published_at", "is", null)
+    .order("published_at", { ascending: false })
+    .limit(limit);
+  return ((data ?? []) as unknown as RawBrief[]).map((r) =>
+    mapBrief(r, new Set(), new Set()),
+  );
+}
+
 /** All published brief slug pairs (sitemap + static params). */
 export async function getPublishedBriefParams(): Promise<
   { showSlug: string; episodeSlug: string; publishedAt: string | null }[]

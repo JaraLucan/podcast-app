@@ -12,7 +12,7 @@ import { writeBrief } from "./editorial";
 import { fetchFeed, type ParsedEpisode } from "./rss";
 import {
   renderTranscriptForPrompt,
-  transcribeWithGroq,
+  transcribe,
   type TranscriptResult,
 } from "./transcription";
 import type { BriefContent } from "./types";
@@ -94,7 +94,7 @@ async function ensureTranscript(
     throw new Error(`Episode ${episode.id} has no audio_url to transcribe`);
   }
 
-  const transcript = await transcribeWithGroq(episode.audio_url);
+  const transcript = await transcribe(episode.audio_url);
 
   await db.from("transcripts").upsert(
     {

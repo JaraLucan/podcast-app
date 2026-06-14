@@ -35,7 +35,15 @@ export default async function LoginPage({
         <LoginForm next={next} />
 
         <p className="text-center text-xs text-neutral-400">
-          By continuing you agree to our Terms and Privacy Policy.
+          By continuing you agree to our{" "}
+          <Link href="/terms" className="underline">
+            Terms
+          </Link>{" "}
+          and{" "}
+          <Link href="/privacy" className="underline">
+            Privacy Policy
+          </Link>
+          .
         </p>
       </div>
     </main>
