@@ -91,6 +91,7 @@ export type Database = {
           id: string;
           show_id: string;
           guid: string;
+          slug: string | null;
           title: string;
           description: string | null;
           audio_url: string | null;
@@ -105,6 +106,7 @@ export type Database = {
           id?: string;
           show_id: string;
           guid: string;
+          slug?: string | null;
           title: string;
           description?: string | null;
           audio_url?: string | null;
@@ -297,11 +299,27 @@ export type Database = {
         Relationships: [];
       };
     };
-    Views: Record<never, never>;
+    Views: {
+      daily_costs: {
+        Row: {
+          day: string;
+          transcript_cost: number;
+          brief_cost: number;
+          total_cost: number;
+          transcripts: number;
+          briefs: number;
+        };
+        Relationships: [];
+      };
+    };
     Functions: {
       is_admin: {
         Args: Record<string, never>;
         Returns: boolean;
+      };
+      claim_job: {
+        Args: Record<string, never>;
+        Returns: Database["public"]["Tables"]["jobs"]["Row"] | null;
       };
     };
     Enums: Record<never, never>;

@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
+import { checkRateLimit, clientIp } from "@/lib/rate-limit";
 
 const emailSchema = z.email({ error: "Enter a valid email address." });
 
@@ -31,6 +32,16 @@ export async function signInWithMagicLink(
   const parsed = emailSchema.safeParse(formData.get("email"));
   if (!parsed.success) {
     return { status: "error", message: parsed.error.issues[0]?.message };
+  }
+
+  // Rate-limit: 5 magic-link requests per IP per 15 minutes.
+  const h = await headers();
+  const limit = checkRateLimit(`magic:${clientIp(h)}`, 5, 15 * 60_000);
+  if (!limit.ok) {
+    return {
+      status: "error",
+      message: `Too many attempts. Try again in ${Math.ceil(limit.retryAfterSeconds / 60)} min.`,
+    };
   }
 
   const next = (formData.get("next") as string) || "/feed";
