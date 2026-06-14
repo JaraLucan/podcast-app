@@ -1,0 +1,50 @@
+name: PodBrief pipeline
+
+# Free, serverless worker: GitHub-hosted runners poll feeds + process the job
+# queue on a schedule, then exit. Replaces an always-on container ($0).
+# Ubuntu runners ship ffmpeg, so long-episode transcription works too.
+
+on:
+  schedule:
+    - cron: "*/30 * * * *" # every 30 minutes (UTC); GitHub may delay under load
+  workflow_dispatch: {} # manual "Run workflow" button
+
+concurrency:
+  group: pipeline
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
+      TADDY_API_KEY: ${{ secrets.TADDY_API_KEY }}
+      TADDY_USER_ID: ${{ secrets.TADDY_USER_ID }}
+      # Free defaults — override in repo Variables/Secrets if you prefer Claude.
+      LLM_PROVIDER: ${{ vars.LLM_PROVIDER || 'groq' }}
+      TRANSCRIPTION_PROVIDER: ${{ vars.TRANSCRIPTION_PROVIDER || 'groq' }}
+      MAX_EPISODES_PER_DAY: ${{ vars.MAX_EPISODES_PER_DAY || '40' }}
+      MIN_EPISODE_MINUTES: ${{ vars.MIN_EPISODE_MINUTES || '10' }}
+      TICK_MAX_JOBS: ${{ vars.TICK_MAX_JOBS || '50' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Poll feeds + process queue
+        run: pnpm tick --ingest

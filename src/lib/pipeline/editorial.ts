@@ -1,6 +1,6 @@
 import type { QualityFlags } from "@/lib/types/database";
 
-import { JsonParseError, runJsonPass, type PassResult } from "./anthropic";
+import { JsonParseError, runJsonPass, type PassResult } from "./llm";
 import {
   buildEditorialUser,
   EDITORIAL_SYSTEM,
@@ -14,7 +14,6 @@ import {
 } from "./types";
 import { validateBrief } from "./validate";
 
-const MODEL = process.env.ANTHROPIC_MODEL_EDITORIAL ?? "claude-sonnet-4-6";
 const MAX_TOKENS = 4000;
 
 export type EditorialResult = {
@@ -39,7 +38,7 @@ export async function writeBrief(input: {
 
   const attempt = async (user: string) =>
     runJsonPass({
-      model: MODEL,
+      tier: "editorial",
       system: EDITORIAL_SYSTEM,
       user,
       maxTokens: MAX_TOKENS,

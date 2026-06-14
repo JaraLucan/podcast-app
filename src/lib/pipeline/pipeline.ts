@@ -19,9 +19,6 @@ import type { BriefContent } from "./types";
 
 type DB = SupabaseClient<Database>;
 
-const EDITORIAL_MODEL =
-  process.env.ANTHROPIC_MODEL_EDITORIAL ?? "claude-sonnet-4-6";
-
 export type ProcessResult = {
   episodeId: string;
   briefId: string;
@@ -182,7 +179,7 @@ export async function processEpisode(
           key_moments: result.data.key_moments,
           numbers: result.data.numbers,
           why_it_matters: result.data.why_it_matters,
-          model_used: EDITORIAL_MODEL,
+          model_used: result.model,
           tokens_in: extraction.tokensIn + result.tokensIn,
           tokens_out: extraction.tokensOut + result.tokensOut,
           cost_usd: costUsd,

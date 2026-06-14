@@ -107,6 +107,10 @@ In production the worker runs as a small always-on container (Railway/Fly, ~$5/m
 — **not** serverless). Vercel Cron hits `/api/cron/poll-feeds` every 30 min to
 enqueue ingests; set `CRON_SECRET` so the endpoint is protected.
 
+**Want $0/month?** Run the worker on GitHub Actions instead (`pnpm tick`, see
+`.github/workflows/pipeline.yml`) and set `LLM_PROVIDER=groq` so summarization
+uses Groq's free tier. Full step-by-step in **[docs/DEPLOY-FREE.md](docs/DEPLOY-FREE.md)**.
+
 To make yourself an admin (for `/admin`), set your profile role in Supabase:
 `update profiles set role = 'admin' where user_id = '<your-auth-uid>';`
 
