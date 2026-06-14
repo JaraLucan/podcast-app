@@ -10,15 +10,17 @@ worker (M2+).
 
 ## Milestone status
 
-- **M1 — Skeleton & data ✅ (this commit)**
-  - Next.js + Tailwind app scaffold
-  - Full Postgres schema + RLS migrations (`supabase/migrations`)
-  - Auth: email magic link + Google OAuth (Supabase SSR)
-  - Seed script for the launch catalog (~30 shows)
-- M2 — Offline-first pipeline (transcribe → two-pass summarize → brief) — _next_
-- M3 — Automation (Taddy webhooks, RSS poller, retries, admin)
-- M4 — Product UI (feed, reader, catalog, saved, settings)
-- M5 — Polish & launch prep
+All five milestones are implemented (v1 feature-complete; iterate from here).
+
+- **M1 — Skeleton & data ✅** — Next.js + Tailwind, schema + RLS, auth, seed
+- **M2 — Pipeline ✅** — transcribe → two-pass summarize → validate → brief,
+  `process-episode` CLI, vitest suite
+- **M3 — Automation ✅** — Postgres job queue + worker, Taddy webhook, RSS
+  poller cron, cost logging, role-gated admin
+- **M4 — Product UI ✅** — onboarding, feed, reader, catalog, saved, settings;
+  public reader with ISR + OG images
+- **M5 — Polish ✅** — loading/error/404 states, sitemap/robots/manifest,
+  analytics, auth rate limiting
 
 ## Setup
 
@@ -81,15 +83,46 @@ Review the resolved titles it prints — a wrong iTunes match means a wrong feed
 pnpm dev          # http://localhost:3000
 ```
 
+### 6. The pipeline & worker
+
+Get brief quality right first by running the pipeline on individual episodes
+(needs `ANTHROPIC_API_KEY` + `GROQ_API_KEY`; install `ffmpeg` for episodes over
+~24 MB):
+
+```bash
+pnpm process-episode "https://lexfridman.com/feed/podcast/"        # latest episode
+pnpm process-episode "<feed-url>" --index 1                        # an older one
+pnpm process-episode --episode-id <uuid>                            # re-run a stored episode
+```
+
+Tune the two prompts in `src/lib/pipeline/prompts.ts` until briefs clear the
+editorial bar. Then run the background worker, which drains the Postgres job
+queue (ingest feeds → process episodes):
+
+```bash
+pnpm worker
+```
+
+In production the worker runs as a small always-on container (Railway/Fly, ~$5/mo
+— **not** serverless). Vercel Cron hits `/api/cron/poll-feeds` every 30 min to
+enqueue ingests; set `CRON_SECRET` so the endpoint is protected.
+
+To make yourself an admin (for `/admin`), set your profile role in Supabase:
+`update profiles set role = 'admin' where user_id = '<your-auth-uid>';`
+
 ## Scripts
 
-| Script           | What it does                          |
-| ---------------- | ------------------------------------- |
-| `pnpm dev`       | Dev server                            |
-| `pnpm build`     | Production build                      |
-| `pnpm typecheck` | `tsc --noEmit`                        |
-| `pnpm lint`      | ESLint                                |
-| `pnpm db:seed`   | Seed the show catalog into Supabase   |
+| Script                  | What it does                                  |
+| ----------------------- | --------------------------------------------- |
+| `pnpm dev`              | Dev server                                    |
+| `pnpm build`            | Production build                              |
+| `pnpm typecheck`        | `tsc --noEmit`                                |
+| `pnpm lint`             | ESLint                                        |
+| `pnpm test`             | Vitest (pipeline validation, quote, RSS)      |
+| `pnpm worker`           | Run the background job worker                  |
+| `pnpm process-episode`  | Run the full pipeline on one episode (CLI)     |
+| `pnpm db:seed`          | Seed the show catalog into Supabase            |
+| `pnpm db:verify-feeds`  | Check that catalog feeds resolve (no DB write) |
 
 ## Project layout
 
@@ -97,15 +130,26 @@ pnpm dev          # http://localhost:3000
 src/
   app/
     page.tsx              landing
-    login/                magic-link + Google sign-in
+    login/ onboarding/ feed/ saved/ settings/   app screens
+    shows/ shows/[slug]/  catalog + show detail
+    b/[showSlug]/[episodeSlug]/   public reader (ISR) + opengraph-image
+    admin/                role-gated pipeline/cost/brief/show management
+    api/cron/poll-feeds/  RSS poller (Vercel Cron)
+    api/webhooks/taddy/   new-episode webhook
     auth/{callback,confirm,signout}/   auth route handlers
-    feed/                 placeholder feed (real UI is M4)
+    {sitemap,robots,manifest}.ts, loading/error/not-found.tsx
+  components/             header, brief card, reader, follow/save buttons
   lib/
-    supabase/{client,server,service,middleware}.ts
+    pipeline/             rss, transcription, extract, editorial, validate, pipeline
+    jobs/                 queue + handlers (Postgres-backed)
+    data/                 queries + user-action server actions
+    supabase/{client,server,service,public,middleware}.ts
+    auth/admin.ts  rate-limit.ts  utils/{slug,format}.ts
     types/database.ts     typed schema (regenerate once the project is live)
   proxy.ts                session refresh + route gating (Next 16 "proxy")
-supabase/migrations/      SQL schema + RLS
-scripts/                  shows.seed.ts (data) + seed-shows.ts (seeder)
+worker/index.ts           background job worker (long-running)
+supabase/migrations/      SQL schema + RLS + claim_job() + daily_costs view
+scripts/                  process-episode (CLI), seed/verify catalog
 ```
 
 ## Notes for Next 16
