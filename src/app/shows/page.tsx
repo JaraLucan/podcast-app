@@ -26,12 +26,13 @@ const CATEGORIES: ShowCategory[] = [
 export default async function CatalogPage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string }>;
+  searchParams: Promise<{ category?: string; q?: string }>;
 }) {
-  const { category } = await searchParams;
+  const { category, q } = await searchParams;
   const active = CATEGORIES.includes(category as ShowCategory)
     ? (category as ShowCategory)
     : null;
+  const query = (q ?? "").trim().toLowerCase();
 
   const [shows, followed, user] = await Promise.all([
     getCatalog(),
@@ -39,7 +40,14 @@ export default async function CatalogPage({
     getCurrentUser(),
   ]);
 
-  const filtered = active ? shows.filter((s) => s.category === active) : shows;
+  const filtered = shows.filter((s) => {
+    if (active && s.category !== active) return false;
+    if (query) {
+      const hay = `${s.title} ${s.publisher ?? ""}`.toLowerCase();
+      if (!hay.includes(query)) return false;
+    }
+    return true;
+  });
 
   return (
     <>
@@ -50,7 +58,18 @@ export default async function CatalogPage({
           Follow shows to build your feed.
         </p>
 
-        <div className="mt-5 flex flex-wrap gap-2 text-sm">
+        <form method="get" className="mt-5">
+          {active && <input type="hidden" name="category" value={active} />}
+          <input
+            type="search"
+            name="q"
+            defaultValue={q ?? ""}
+            placeholder="Search shows…"
+            className="w-full rounded-lg border border-neutral-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-neutral-900 dark:border-neutral-700 dark:focus:border-neutral-100"
+          />
+        </form>
+
+        <div className="mt-4 flex flex-wrap gap-2 text-sm">
           <Chip href="/shows" label="All" active={!active} />
           {CATEGORIES.map((c) => (
             <Chip
@@ -88,7 +107,9 @@ export default async function CatalogPage({
           ))}
           {filtered.length === 0 && (
             <p className="py-10 text-center text-neutral-400">
-              No shows in this category yet.
+              {query
+                ? `No shows match “${q}”.`
+                : "No shows in this category yet."}
             </p>
           )}
         </div>

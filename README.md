@@ -118,7 +118,7 @@ To make yourself an admin (for `/admin`), set your profile role in Supabase:
 | `pnpm build`            | Production build                              |
 | `pnpm typecheck`        | `tsc --noEmit`                                |
 | `pnpm lint`             | ESLint                                        |
-| `pnpm test`             | Vitest (pipeline validation, quote, RSS)      |
+| `pnpm test`             | Vitest (validation, quote, RSS, job queue)    |
 | `pnpm worker`           | Run the background job worker                  |
 | `pnpm process-episode`  | Run the full pipeline on one episode (CLI)     |
 | `pnpm db:seed`          | Seed the show catalog into Supabase            |

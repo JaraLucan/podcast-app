@@ -14,7 +14,9 @@ async function ensureSentry() {
   if (!dsn) return null;
   try {
     const pkg = "@sentry/node";
-    const mod = await import(pkg);
+    // Bundler-opaque: @sentry/node is an optional peer dep, resolved only at
+    // runtime when SENTRY_DSN is set and the package is installed.
+    const mod = await import(/* webpackIgnore: true */ /* turbopackIgnore: true */ pkg);
     mod.init({ dsn, tracesSampleRate: 0 });
     sentry = mod;
   } catch {

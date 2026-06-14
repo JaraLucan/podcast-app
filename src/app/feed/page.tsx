@@ -22,7 +22,7 @@ const TABS: { key: FeedFilter; label: string }[] = [
 export default async function FeedPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; n?: string }>;
 }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/feed");
@@ -30,11 +30,13 @@ export default async function FeedPage({
   const profile = await getProfile();
   if (!profile?.onboarded) redirect("/onboarding");
 
-  const { tab } = await searchParams;
+  const { tab, n } = await searchParams;
   const filter: FeedFilter =
     tab === "unread" || tab === "saved" ? tab : "all";
+  const limit = Math.min(Math.max(parseInt(n ?? "30", 10) || 30, 30), 300);
 
-  const { items, followsCount } = await getFeed(filter);
+  const { items, followsCount } = await getFeed(filter, limit);
+  const hasMore = items.length >= limit;
 
   return (
     <>
@@ -94,6 +96,16 @@ export default async function FeedPage({
             {items.map((b) => (
               <BriefCard key={b.id} brief={b} />
             ))}
+            {hasMore && (
+              <div className="pt-2 text-center">
+                <Link
+                  href={`/feed?${filter !== "all" ? `tab=${filter}&` : ""}n=${limit + 30}`}
+                  className="inline-block rounded-lg border border-neutral-300 px-5 py-2.5 text-sm font-medium text-neutral-600 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-900"
+                >
+                  Load more
+                </Link>
+              </div>
+            )}
           </div>
         )}
       </main>

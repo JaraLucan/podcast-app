@@ -44,9 +44,10 @@ chybí klíče (viz níže).
   odpublikuje všechny briefy show).
 
 ### M4 — Produktové UI
-- Onboarding (výběr shows), feed (taby All/Unread/Saved, mark-read, mark-all),
-  prémiová čtečka s klikatelnými timestampy (deep-link na YouTube `?t=`),
-  katalog + detail show, saved s poznámkami, settings vč. GDPR smazání účtu.
+- Onboarding (výběr shows), feed (taby All/Unread/Saved, mark-read, mark-all,
+  „Load more" stránkování), prémiová čtečka s klikatelnými timestampy (deep-link
+  na YouTube `?t=`), katalog s **vyhledáváním** + filtrem kategorií, detail show,
+  saved s poznámkami, settings vč. GDPR smazání účtu.
 - Veřejná čtečka `/b/[show]/[episode]` je **ISR/SSG** (`generateStaticParams` +
   `revalidate`), s OG obrázkem a metadaty.
 
@@ -86,8 +87,10 @@ chybí klíče (viz níže).
 - **Strict JSON** řeším promptem + zod validací + retry (ne přes API
   „structured outputs"). Robustní a model-agnostické, ale ne 100% garance jako
   schema-constrained výstup.
-- **Job-queue locking test** není v unit testech (vyžadoval by živou DB). Logika
-  je v SQL funkci `claim_job()` se `SKIP LOCKED`.
+- **Job-queue**: logika fronty (enqueue, backoff, vyčerpání pokusů → failed) je
+  unit-testovaná přes fake klienta; samotné atomické zamykání je v SQL funkci
+  `claim_job()` se `SKIP LOCKED` a ověřuje se až za běhu workeru (ne v unit testu,
+  vyžadovalo by živou DB).
 - **Taddy webhook** parsuje payload best-effort (hledá UUID série a spustí
   ingest). Až budeš mít reálný Taddy formát, ověř/doostři mapování.
 - **Sentry** je připravený (`src/lib/observability.ts`), ale balíček
