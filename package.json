@@ -12,6 +12,7 @@
     "test:watch": "vitest",
     "worker": "tsx worker/index.ts",
     "tick": "tsx scripts/tick.ts",
+    "preflight": "tsx scripts/preflight.ts",
     "process-episode": "tsx scripts/process-episode.ts",
     "db:seed": "tsx scripts/seed-shows.ts",
     "db:verify-feeds": "tsx scripts/verify-feeds.ts"
