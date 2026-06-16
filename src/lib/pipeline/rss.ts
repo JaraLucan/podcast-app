@@ -91,7 +91,7 @@ export function parseFeed(xml: string): ParsedFeed {
 
 export async function fetchFeed(url: string): Promise<ParsedFeed> {
   const res = await fetch(url, {
-    headers: { "User-Agent": "PodBrief/1.0 (+https://podbrief.app)" },
+    headers: { "User-Agent": "PodBrief/1.0 (+https://podbrief.com)" },
   });
   if (!res.ok) {
     throw new Error(`Feed fetch failed (${res.status}) for ${url}`);

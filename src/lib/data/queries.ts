@@ -311,6 +311,8 @@ export async function getCatalog(): Promise<Show[]> {
     .from("shows")
     .select("*")
     .eq("is_active", true)
+    .eq("dmca_hold", false)
+    .order("featured", { ascending: false })
     .order("title");
   return data ?? [];
 }
@@ -321,6 +323,7 @@ export async function getShowBySlug(slug: string): Promise<Show | null> {
     .from("shows")
     .select("*")
     .eq("slug", slug)
+    .eq("dmca_hold", false)
     .maybeSingle();
   return data;
 }

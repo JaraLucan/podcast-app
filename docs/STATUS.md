@@ -122,6 +122,23 @@ chybí klíče (viz níže).
 
 ---
 
+## ⚖️ Právní rámec (PRD v2 §3) — v kódu hotové
+
+- **`shows.dmca_hold`** — jedním kliknutím v adminu (Takedown) skryje všechny
+  briefy show. Vynuceno i v **RLS** (ne jen v appce), takže ani přímý API
+  přístup je nedostane. Reverzibilní přes „Restore" (nemažou se data).
+- **`ingest_source='blocked'`** — pro Spotify Exclusive / paywall /
+  „no-summarization" shows; poller i webhook je přeskakují.
+- **Log takedown requestů** (`takedown_requests` tabulka) + admin stránka
+  `/admin/takedowns` (zaeviduj požadavek, vyřeš, případně rovnou drž show).
+- **`shows.featured`** — Partner „Featured" badge (katalog + admin).
+- Kontakt `takedown@podbrief.com` viditelný na každé stránce.
+
+Co je **na tobě** (mimo kód, PRD v2 §3): právní review od advokáta na fair use
+($500–1500) před prvními platícími uživateli; rozeslání Partner e-mailů show
+týmům. Data flywheel (cross-episode) je připravený — ukládáme plné transkripty
+i segmenty.
+
 ## 🧭 Jak to celé teče (zkráceně)
 
 ```

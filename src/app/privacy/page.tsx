@@ -56,8 +56,8 @@ export default function PrivacyPage() {
           <h2 className="text-lg font-semibold text-foreground">Contact</h2>
           <p className="mt-2 text-sm leading-relaxed">
             Questions about your data? Email{" "}
-            <a href="mailto:privacy@podbrief.app" className="underline">
-              privacy@podbrief.app
+            <a href="mailto:privacy@podbrief.com" className="underline">
+              privacy@podbrief.com
             </a>
             .
           </p>

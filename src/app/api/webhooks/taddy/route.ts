@@ -63,11 +63,16 @@ export async function POST(request: Request) {
   const db = createServiceClient();
   const { data: show } = await db
     .from("shows")
-    .select("id, is_active")
+    .select("id, is_active, dmca_hold, ingest_source")
     .eq("taddy_uuid", seriesUuid)
     .maybeSingle();
 
-  if (!show || !show.is_active) {
+  if (
+    !show ||
+    !show.is_active ||
+    show.dmca_hold ||
+    show.ingest_source === "blocked"
+  ) {
     return NextResponse.json({ ok: true, matched: false });
   }
 

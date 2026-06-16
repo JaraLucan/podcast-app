@@ -39,8 +39,8 @@ export default function TermsPage() {
             short quotation per brief) and are designed to drive listeners to
             your episode. If you&apos;re a creator and would like your show
             removed, email{" "}
-            <a href="mailto:takedown@podbrief.app" className="underline">
-              takedown@podbrief.app
+            <a href="mailto:takedown@podbrief.com" className="underline">
+              takedown@podbrief.com
             </a>{" "}
             and we&apos;ll unpublish all briefs for your show promptly.
           </p>
@@ -59,12 +59,12 @@ export default function TermsPage() {
           <h2 className="text-lg font-semibold text-foreground">Contact</h2>
           <p className="mt-2 text-sm leading-relaxed">
             Takedowns:{" "}
-            <a href="mailto:takedown@podbrief.app" className="underline">
-              takedown@podbrief.app
+            <a href="mailto:takedown@podbrief.com" className="underline">
+              takedown@podbrief.com
             </a>{" "}
             · General:{" "}
-            <a href="mailto:hello@podbrief.app" className="underline">
-              hello@podbrief.app
+            <a href="mailto:hello@podbrief.com" className="underline">
+              hello@podbrief.com
             </a>
           </p>
         </section>

@@ -142,7 +142,7 @@ export default async function Home() {
           <Link href="/terms" className="hover:text-foreground">
             Terms
           </Link>
-          <a href="mailto:takedown@podbrief.app" className="hover:text-foreground">
+          <a href="mailto:takedown@podbrief.com" className="hover:text-foreground">
             Takedown
           </a>
         </nav>

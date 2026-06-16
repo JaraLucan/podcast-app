@@ -91,12 +91,14 @@ export async function ingestShow(db: DB, showId: string): Promise<IngestResult> 
   };
 }
 
-/** Enqueue an ingest job for every active show (RSS poller cron, PRD §5.1). */
+/** Enqueue an ingest job for every active, non-blocked, non-held show (cron). */
 export async function enqueueAllActiveShows(db: DB): Promise<number> {
   const { data: shows } = await db
     .from("shows")
     .select("id")
-    .eq("is_active", true);
+    .eq("is_active", true)
+    .eq("dmca_hold", false)
+    .neq("ingest_source", "blocked");
   for (const s of shows ?? []) {
     await enqueue(db, "ingest_show", { show_id: s.id });
   }

@@ -52,6 +52,15 @@ export async function toggleShowActive(formData: FormData) {
   revalidatePath("/admin/shows");
 }
 
+export async function toggleFeatured(formData: FormData) {
+  await requireAdmin();
+  const id = formData.get("id") as string;
+  const featured = formData.get("featured") === "true";
+  const db = createServiceClient();
+  await db.from("shows").update({ featured: !featured }).eq("id", id);
+  revalidatePath("/admin/shows");
+}
+
 /** Manually trigger an ingest poll for one show. */
 export async function ingestNow(formData: FormData) {
   await requireAdmin();
@@ -61,21 +70,36 @@ export async function ingestNow(formData: FormData) {
   revalidatePath("/admin/shows");
 }
 
-/** Takedown (PRD §8): deactivate the show and unpublish all its briefs. */
+/**
+ * DMCA takedown (PRD v2 §3): set the reversible `dmca_hold` flag — this hides
+ * every brief for the show in one query (enforced in RLS too) without losing
+ * the data — deactivate it, and log the request.
+ */
 export async function takedownShow(formData: FormData) {
   await requireAdmin();
   const id = formData.get("id") as string;
+  const reason = (formData.get("reason") as string)?.trim() || "admin takedown";
   const db = createServiceClient();
 
-  const { data: eps } = await db
-    .from("episodes")
-    .select("id")
-    .eq("show_id", id);
-  const ids = (eps ?? []).map((e) => e.id);
+  await db
+    .from("shows")
+    .update({ dmca_hold: true, is_active: false })
+    .eq("id", id);
+  await db
+    .from("takedown_requests")
+    .insert({ show_id: id, reason, status: "resolved", resolved_at: new Date().toISOString() });
+  revalidatePath("/admin/shows");
+  revalidatePath("/admin/takedowns");
+}
 
-  if (ids.length) {
-    await db.from("briefs").update({ published_at: null }).in("episode_id", ids);
-  }
-  await db.from("shows").update({ is_active: false }).eq("id", id);
+/** Reverse a takedown: clear the hold and reactivate the show. */
+export async function restoreShow(formData: FormData) {
+  await requireAdmin();
+  const id = formData.get("id") as string;
+  const db = createServiceClient();
+  await db
+    .from("shows")
+    .update({ dmca_hold: false, is_active: true })
+    .eq("id", id);
   revalidatePath("/admin/shows");
 }

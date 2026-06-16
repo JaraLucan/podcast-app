@@ -86,8 +86,15 @@ export default async function CatalogPage({
             <div key={s.id} className="flex items-center gap-3 py-4">
               <ShowAvatar title={s.title} imageUrl={s.image_url} size={48} />
               <Link href={`/shows/${s.slug}`} className="min-w-0 flex-1">
-                <div className="truncate font-medium hover:underline">
-                  {s.title}
+                <div className="flex items-center gap-2">
+                  <span className="truncate font-medium hover:underline">
+                    {s.title}
+                  </span>
+                  {s.featured && (
+                    <span className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                      Featured
+                    </span>
+                  )}
                 </div>
                 <div className="truncate text-xs text-neutral-400">
                   {s.publisher} · {s.category}

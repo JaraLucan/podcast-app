@@ -1,6 +1,13 @@
 import { createServiceClient } from "@/lib/supabase/service";
 
-import { ingestNow, takedownShow, toggleShowActive, upsertShow } from "./actions";
+import {
+  ingestNow,
+  restoreShow,
+  takedownShow,
+  toggleFeatured,
+  toggleShowActive,
+  upsertShow,
+} from "./actions";
 
 export const metadata = { title: "Shows · Admin" };
 
@@ -10,7 +17,9 @@ export default async function AdminShows() {
   const db = createServiceClient();
   const { data: shows } = await db
     .from("shows")
-    .select("id, slug, title, publisher, category, rss_url, is_active, taddy_uuid")
+    .select(
+      "id, slug, title, publisher, category, rss_url, is_active, taddy_uuid, dmca_hold, featured, ingest_source",
+    )
     .order("title");
 
   const input =
@@ -65,7 +74,24 @@ export default async function AdminShows() {
                 className="border-b border-neutral-100 dark:border-neutral-900"
               >
                 <td className="py-2">
-                  <div className="font-medium">{s.title}</div>
+                  <div className="flex items-center gap-2 font-medium">
+                    {s.title}
+                    {s.featured && (
+                      <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                        Featured
+                      </span>
+                    )}
+                    {s.dmca_hold && (
+                      <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-red-700 dark:bg-red-950 dark:text-red-300">
+                        DMCA hold
+                      </span>
+                    )}
+                    {s.ingest_source === "blocked" && (
+                      <span className="rounded bg-neutral-200 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
+                        Blocked
+                      </span>
+                    )}
+                  </div>
                   <div className="text-xs text-neutral-400">{s.publisher}</div>
                 </td>
                 <td className="py-2">{s.category ?? "—"}</td>
@@ -84,6 +110,13 @@ export default async function AdminShows() {
                       Poll
                     </button>
                   </form>
+                  <form action={toggleFeatured} className="inline">
+                    <input type="hidden" name="id" value={s.id} />
+                    <input type="hidden" name="featured" value={String(s.featured)} />
+                    <button className="mr-3 text-amber-600 hover:underline dark:text-amber-400">
+                      {s.featured ? "Unfeature" : "Feature"}
+                    </button>
+                  </form>
                   <form action={toggleShowActive} className="inline">
                     <input type="hidden" name="id" value={s.id} />
                     <input type="hidden" name="active" value={String(s.is_active)} />
@@ -91,12 +124,21 @@ export default async function AdminShows() {
                       {s.is_active ? "Pause" : "Activate"}
                     </button>
                   </form>
-                  <form action={takedownShow} className="inline">
-                    <input type="hidden" name="id" value={s.id} />
-                    <button className="text-red-500 hover:underline">
-                      Takedown
-                    </button>
-                  </form>
+                  {s.dmca_hold ? (
+                    <form action={restoreShow} className="inline">
+                      <input type="hidden" name="id" value={s.id} />
+                      <button className="text-emerald-600 hover:underline dark:text-emerald-400">
+                        Restore
+                      </button>
+                    </form>
+                  ) : (
+                    <form action={takedownShow} className="inline">
+                      <input type="hidden" name="id" value={s.id} />
+                      <button className="text-red-500 hover:underline">
+                        Takedown
+                      </button>
+                    </form>
+                  )}
                 </td>
               </tr>
             ))}

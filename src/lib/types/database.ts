@@ -35,7 +35,8 @@ export type QualityFlags = {
 };
 
 export type ShowCategory = "tech" | "finance" | "ai" | "crypto" | "business";
-export type IngestSource = "taddy" | "rss";
+export type IngestSource = "taddy" | "rss" | "blocked";
+export type TakedownStatus = "open" | "resolved";
 export type EpisodeStatus =
   | "discovered"
   | "transcribing"
@@ -64,6 +65,8 @@ export type Database = {
           website_url: string | null;
           is_active: boolean;
           ingest_source: IngestSource;
+          dmca_hold: boolean;
+          featured: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -80,6 +83,8 @@ export type Database = {
           website_url?: string | null;
           is_active?: boolean;
           ingest_source?: IngestSource;
+          dmca_hold?: boolean;
+          featured?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -298,6 +303,37 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["jobs"]["Insert"]>;
         Relationships: [];
       };
+      takedown_requests: {
+        Row: {
+          id: string;
+          show_id: string | null;
+          email: string | null;
+          reason: string | null;
+          status: TakedownStatus;
+          created_at: string;
+          resolved_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          show_id?: string | null;
+          email?: string | null;
+          reason?: string | null;
+          status?: TakedownStatus;
+          created_at?: string;
+          resolved_at?: string | null;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["takedown_requests"]["Insert"]
+        >;
+        Relationships: [
+          {
+            foreignKeyName: "takedown_requests_show_id_fkey";
+            columns: ["show_id"];
+            referencedRelation: "shows";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       daily_costs: {
@@ -334,3 +370,5 @@ export type Transcript = Database["public"]["Tables"]["transcripts"]["Row"];
 export type Brief = Database["public"]["Tables"]["briefs"]["Row"];
 export type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 export type Job = Database["public"]["Tables"]["jobs"]["Row"];
+export type TakedownRequest =
+  Database["public"]["Tables"]["takedown_requests"]["Row"];
