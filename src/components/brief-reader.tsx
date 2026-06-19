@@ -182,6 +182,24 @@ export function BriefReader({ brief }: { brief: BriefListItem }) {
           </a>
         </div>
       )}
+
+      {/* Independent-summary disclosure + takedown contact (PRD v2 §3) */}
+      <p className="mt-6 text-center text-xs text-neutral-400">
+        This is an independent, editorial summary to help you decide whether to
+        listen — not a transcript or replacement. Not affiliated with{" "}
+        {brief.show.title}.{" "}
+        {brief.show.publisher ? `© ${brief.show.publisher}. ` : ""}
+        Rights holder?{" "}
+        <a
+          href={`mailto:takedown@podbrief.com?subject=${encodeURIComponent(
+            `Takedown: ${brief.show.title}`,
+          )}`}
+          className="underline hover:text-foreground"
+        >
+          Request takedown
+        </a>
+        .
+      </p>
     </article>
   );
 }

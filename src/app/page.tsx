@@ -38,9 +38,10 @@ export default async function Home() {
           The world&apos;s best tech &amp; finance podcasts, in 3-minute briefs.
         </h1>
         <p className="mt-6 text-pretty text-lg text-neutral-500">
-          PodBrief turns every new episode into a sharp, written brief — the
-          numbers, the predictions, the disagreements — with timestamps back to
-          the audio. Read in minutes; listen when it&apos;s worth it.
+          Podcasts are long; most never get finished. PodBrief turns each new
+          episode into a sharp 3-minute brief — the numbers, predictions, and
+          disagreements, with timestamps back to the audio — so you can decide
+          what&apos;s worth a full listen.
         </p>
         <div className="mt-10 flex items-center justify-center gap-3">
           <Link

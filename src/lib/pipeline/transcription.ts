@@ -12,6 +12,13 @@ import Groq from "groq-sdk";
 import type { TranscriptSegment, TranscriptSource } from "@/lib/types/database";
 
 const GROQ_MODEL = process.env.GROQ_WHISPER_MODEL ?? "whisper-large-v3";
+// Bias Whisper toward correct spelling of common tech/finance proper nouns and
+// tickers (council: garbage names/tickers → confident LLM nonsense). ≤224 tokens.
+const VOCAB_PROMPT =
+  "Tech and finance podcast. Likely terms: AI, LLM, GPU, Nvidia, OpenAI, " +
+  "Anthropic, Chamath Palihapitiya, Jason Calacanis, Bill Gurley, capex, " +
+  "valuation, ARR, IPO, SPAC, basis points, NASDAQ, S&P 500, Fed, tickers " +
+  "like NVDA, MSFT, AAPL, GOOGL, TSLA.";
 const GROQ_USD_PER_HOUR = 0.111; // whisper-large-v3 pricing
 const MAX_DOWNLOAD_BYTES = 250 * 1024 * 1024; // PRD cap
 const GROQ_MAX_BYTES = 24 * 1024 * 1024; // single-request ceiling; chunk above this
@@ -113,6 +120,7 @@ async function transcribeFile(
     model: GROQ_MODEL,
     response_format: "verbose_json",
     timestamp_granularities: ["segment"],
+    prompt: VOCAB_PROMPT,
   });
   // verbose_json shape
   const data = res as unknown as { text: string; segments?: GroqSegment[] };

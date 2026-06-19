@@ -136,8 +136,18 @@ chybí klíče (viz níže).
 
 Co je **na tobě** (mimo kód, PRD v2 §3): právní review od advokáta na fair use
 ($500–1500) před prvními platícími uživateli; rozeslání Partner e-mailů show
-týmům. Data flywheel (cross-episode) je připravený — ukládáme plné transkripty
-i segmenty.
+týmům. Data flywheel (cross-episode) je připravený — ukládáme plný transkript,
+segmenty **i celou pass-1 extrakci** (`briefs.extraction`: claims, entities,
+numbers, disagreements).
+
+Strategická rozvaha (use-case, moaty, konkurence, copyright, Day-0 validace) je
+v **[STRATEGY.md](STRATEGY.md)** — shrnuje závěry council review a co z nich je
+už v kódu vs. co je na tobě.
+
+Z council review navíc v kódu: Whisper doménový vocab prompt (lepší přepis
+tickerů/jmen), zpřísněný editorial rubric ve `validate.ts` (zákaz filleru +
+povinné „hard specifics" v takeaways), a kontakt na takedown na **každé** brief
+stránce.
 
 ## 🧭 Jak to celé teče (zkráceně)
 

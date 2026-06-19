@@ -170,6 +170,7 @@ export type Database = {
           key_moments: KeyMoment[] | null;
           numbers: BriefNumber[] | null;
           why_it_matters: string | null;
+          extraction: Json | null;
           model_used: string | null;
           tokens_in: number | null;
           tokens_out: number | null;
@@ -187,6 +188,7 @@ export type Database = {
           key_moments?: KeyMoment[] | null;
           numbers?: BriefNumber[] | null;
           why_it_matters?: string | null;
+          extraction?: Json | null;
           model_used?: string | null;
           tokens_in?: number | null;
           tokens_out?: number | null;

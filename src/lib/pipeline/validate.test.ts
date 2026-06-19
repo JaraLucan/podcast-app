@@ -116,4 +116,29 @@ describe("validateBrief", () => {
     const flags = validateBrief(makeBrief({ tldr: "" }), 4000);
     expect(flags.issues.some((i) => i.includes("Empty TL;DR"))).toBe(true);
   });
+
+  it("flags banned filler phrasing", () => {
+    const flags = validateBrief(
+      makeBrief({ tldr: "In this episode, the hosts discuss AI capex trends." }),
+      4000,
+    );
+    expect(flags.passed).toBe(false);
+    expect(flags.issues.some((i) => i.includes("filler"))).toBe(true);
+  });
+
+  it("flags takeaways that lack concrete specifics", () => {
+    const flags = validateBrief(
+      makeBrief({
+        takeaways: [
+          "things were discussed at length",
+          "the mood was generally optimistic",
+          "they shared some opinions",
+          "it was an interesting talk",
+        ],
+      }),
+      4000,
+    );
+    expect(flags.passed).toBe(false);
+    expect(flags.issues.some((i) => i.includes("concrete specific"))).toBe(true);
+  });
 });

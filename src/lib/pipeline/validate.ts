@@ -14,8 +14,26 @@ export const LIMITS = {
   maxQuoteWords: 15,
 };
 
+// Banned filler — the brief must lead with substance, not "in this episode…".
+const FILLER_PATTERNS = [
+  /\bin this episode\b/i,
+  /\bthe hosts discuss\b/i,
+  /\bin this conversation\b/i,
+  /\bthe guest(s)? (discuss|talk)/i,
+  /\bthis episode (covers|explores)\b/i,
+];
+
 function words(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
+/** A takeaway carries a "hard specific": a number, an acronym/ticker, or a name. */
+export function hasConcreteSpecific(text: string): boolean {
+  return (
+    /\d/.test(text) || // numbers, %, $, years, price targets
+    /\b[A-Z]{2,}\b/.test(text) || // acronyms / tickers (AI, IPO, NVDA)
+    /\b[A-Z][a-zA-Z]+\s+[A-Z][a-zA-Z]+\b/.test(text) // proper names / companies
+  );
 }
 
 /** Total human-readable word count across the rendered brief. */
@@ -100,6 +118,24 @@ export function validateBrief(
     } else if (durationSeconds && m.ts_seconds > durationSeconds + 60) {
       issues.push(
         `Timestamp ${m.ts_seconds}s exceeds episode duration ${durationSeconds}s.`,
+      );
+    }
+  }
+
+  // House style: no filler (PRD §2 bans "In this episode, the hosts discuss…").
+  const fillerHit = FILLER_PATTERNS.find((re) =>
+    re.test(`${brief.tldr} ${brief.takeaways.join(" ")}`),
+  );
+  if (fillerHit) {
+    issues.push(`Contains banned filler phrasing (${fillerHit}).`);
+  }
+
+  // Hard specifics: at least half the takeaways must contain a concrete fact.
+  if (brief.takeaways.length > 0) {
+    const withSpecific = brief.takeaways.filter(hasConcreteSpecific).length;
+    if (withSpecific < Math.ceil(brief.takeaways.length / 2)) {
+      issues.push(
+        `Too few takeaways with a concrete specific: ${withSpecific}/${brief.takeaways.length}.`,
       );
     }
   }

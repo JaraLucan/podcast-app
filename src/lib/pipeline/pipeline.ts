@@ -179,6 +179,8 @@ export async function processEpisode(
           key_moments: result.data.key_moments,
           numbers: result.data.numbers,
           why_it_matters: result.data.why_it_matters,
+          // Persist pass-1 extraction for future cross-episode intelligence.
+          extraction: extraction.data,
           model_used: result.model,
           tokens_in: extraction.tokensIn + result.tokensIn,
           tokens_out: extraction.tokensOut + result.tokensOut,
