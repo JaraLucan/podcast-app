@@ -62,12 +62,18 @@ export async function writeBrief(input: {
       `${baseUser}\n\n${retryFeedback(quality.issues, JSON.stringify(result.data))}`,
     );
     const retryQuality = validateBrief(retry.data, input.durationSeconds);
-    // Combine token cost across both editorial attempts.
-    retry.costUsd = Math.round((retry.costUsd + result.costUsd) * 1e6) / 1e6;
-    retry.tokensIn += result.tokensIn;
-    retry.tokensOut += result.tokensOut;
-    return { result: retry, quality: retryQuality };
-  } catch {
+    // Combine token cost across both editorial attempts (new object, no mutation).
+    const merged: PassResult<BriefContent> = {
+      ...retry,
+      costUsd: Math.round((retry.costUsd + result.costUsd) * 1e6) / 1e6,
+      tokensIn: retry.tokensIn + result.tokensIn,
+      tokensOut: retry.tokensOut + result.tokensOut,
+    };
+    return { result: merged, quality: retryQuality };
+  } catch (err) {
+    // A parse failure on retry → keep the first (validated-but-flagged) result;
+    // any other error (network, rate limit) must propagate.
+    if (!(err instanceof JsonParseError)) throw err;
     return { result, quality };
   }
 }

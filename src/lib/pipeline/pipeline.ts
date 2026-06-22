@@ -129,6 +129,14 @@ export async function processEpisode(
     .single();
   if (!show) throw new Error(`Show not found for episode ${episodeId}`);
 
+  // Eligibility gate (checked outside try so a skip doesn't mark the episode
+  // 'failed'): never process or publish a held/blocked/inactive show, even if
+  // the job was queued before the takedown.
+  if (show.dmca_hold || !show.is_active || show.ingest_source === "blocked") {
+    await db.from("episodes").update({ status: "skipped" }).eq("id", episode.id);
+    throw new Error(`Show not eligible (held/blocked/inactive): ${show.slug}`);
+  }
+
   try {
     await db
       .from("episodes")
@@ -167,7 +175,16 @@ export async function processEpisode(
 
     const costUsd =
       Math.round((extraction.costUsd + result.costUsd) * 1e6) / 1e6;
-    const published = quality.passed;
+
+    // Re-check eligibility right before publishing — the show may have been put
+    // on DMCA hold while this episode was being transcribed/summarized.
+    const { data: freshShow } = await db
+      .from("shows")
+      .select("dmca_hold, is_active")
+      .eq("id", show.id)
+      .single();
+    const eligible = freshShow ? !freshShow.dmca_hold && freshShow.is_active : false;
+    const published = quality.passed && eligible;
 
     const { data: brief, error: briefErr } = await db
       .from("briefs")

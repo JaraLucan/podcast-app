@@ -60,7 +60,9 @@ export default async function ReaderPage({ params }: { params: Params }) {
     <main className="flex-1">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
+        }}
       />
       <div className="mx-auto flex max-w-2xl items-center justify-between px-6 py-4">
         <Link href="/" className="text-sm font-semibold tracking-tight">

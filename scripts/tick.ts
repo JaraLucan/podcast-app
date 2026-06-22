@@ -39,7 +39,7 @@ async function main() {
       console.log(`✓ job ${job.id} (${job.type}): ${summary}`);
       processed++;
     } catch (err) {
-      const message = (err as Error).message ?? String(err);
+      const message = err instanceof Error ? err.message : String(err);
       await failJob(db, job, message);
       await reportError(err, { jobId: job.id, type: job.type });
       console.error(`✗ job ${job.id} (${job.type}): ${message}`);

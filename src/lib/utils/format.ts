@@ -55,7 +55,9 @@ export function youtubeTimestampUrl(
   youtubeUrl: string | null,
   seconds: number,
 ): string | null {
-  if (!youtubeUrl || !/youtu/.test(youtubeUrl)) return null;
+  if (!youtubeUrl || !/(?:youtube\.com|youtu\.be)/i.test(youtubeUrl)) {
+    return null;
+  }
   const sep = youtubeUrl.includes("?") ? "&" : "?";
   return `${youtubeUrl}${sep}t=${Math.floor(seconds)}s`;
 }

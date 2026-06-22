@@ -1,5 +1,7 @@
 import { XMLParser } from "fast-xml-parser";
 
+import { assertPublicHttpUrl } from "./net";
+
 export type ParsedEpisode = {
   guid: string;
   title: string;
@@ -90,6 +92,7 @@ export function parseFeed(xml: string): ParsedFeed {
 }
 
 export async function fetchFeed(url: string): Promise<ParsedFeed> {
+  assertPublicHttpUrl(url); // SSRF guard
   const res = await fetch(url, {
     headers: { "User-Agent": "PodBrief/1.0 (+https://podbrief.com)" },
   });
@@ -113,6 +116,9 @@ export function shouldSkipEpisode(
   ep: ParsedEpisode,
   minMinutes: number,
 ): { skip: boolean; reason?: string } {
+  if (!ep.audioUrl) {
+    return { skip: true, reason: "no audio enclosure" };
+  }
   if (ep.durationSeconds != null && ep.durationSeconds < minMinutes * 60) {
     return { skip: true, reason: `under ${minMinutes} min` };
   }

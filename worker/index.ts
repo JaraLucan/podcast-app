@@ -52,7 +52,7 @@ async function loop() {
       await completeJob(db, job.id);
       console.log(`✓ job ${job.id}: ${summary} [${Date.now() - started}ms]`);
     } catch (err) {
-      const message = (err as Error).message ?? String(err);
+      const message = err instanceof Error ? err.message : String(err);
       await failJob(db, job, message);
       await reportError(err, { jobId: job.id, type: job.type });
     }

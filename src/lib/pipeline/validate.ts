@@ -123,9 +123,7 @@ export function validateBrief(
   }
 
   // House style: no filler (PRD §2 bans "In this episode, the hosts discuss…").
-  const fillerHit = FILLER_PATTERNS.find((re) =>
-    re.test(`${brief.tldr} ${brief.takeaways.join(" ")}`),
-  );
+  const fillerHit = FILLER_PATTERNS.find((re) => re.test(allProse(brief)));
   if (fillerHit) {
     issues.push(`Contains banned filler phrasing (${fillerHit}).`);
   }

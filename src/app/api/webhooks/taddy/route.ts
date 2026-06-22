@@ -1,3 +1,5 @@
+import { timingSafeEqual } from "node:crypto";
+
 import { NextResponse } from "next/server";
 
 import { enqueue } from "@/lib/jobs/queue";
@@ -9,14 +11,16 @@ import { createServiceClient } from "@/lib/supabase/service";
 // payload-shape variation: we just need the series uuid somewhere in the body.
 export const dynamic = "force-dynamic";
 
+function safeEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  return ab.length === bb.length && timingSafeEqual(ab, bb);
+}
+
 function authorized(request: Request): boolean {
   const secret = process.env.TADDY_WEBHOOK_SECRET;
-  if (!secret) return true;
-  const url = new URL(request.url);
-  return (
-    request.headers.get("x-taddy-secret") === secret ||
-    url.searchParams.get("secret") === secret
-  );
+  if (!secret) return false; // fail closed
+  return safeEqual(request.headers.get("x-taddy-secret") ?? "", secret);
 }
 
 /** Best-effort dig for a podcast-series uuid in an unknown payload shape. */

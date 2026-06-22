@@ -80,7 +80,14 @@ function mapBrief(
   readSet: Set<string>,
   saveSet: Set<string>,
 ): BriefListItem {
-  const ep = raw.episodes;
+  // PostgREST may return an embedded relation as an object or a single-element
+  // array depending on the relationship — normalize both.
+  const ep = (Array.isArray(raw.episodes)
+    ? raw.episodes[0]
+    : raw.episodes) as RawBrief["episodes"];
+  const show = (Array.isArray(ep.shows)
+    ? ep.shows[0]
+    : ep.shows) as RawBrief["episodes"]["shows"];
   return {
     id: raw.id,
     tldr: raw.tldr,
@@ -99,12 +106,12 @@ function mapBrief(
       publishedAt: ep.published_at,
     },
     show: {
-      title: ep.shows.title,
-      slug: ep.shows.slug,
-      imageUrl: ep.shows.image_url,
-      category: ep.shows.category,
-      websiteUrl: ep.shows.website_url,
-      publisher: ep.shows.publisher,
+      title: show.title,
+      slug: show.slug,
+      imageUrl: show.image_url,
+      category: show.category,
+      websiteUrl: show.website_url,
+      publisher: show.publisher,
     },
     isRead: readSet.has(raw.id),
     isSaved: saveSet.has(raw.id),
@@ -163,13 +170,15 @@ export async function getFeed(
     const savedIds = [...saveSet];
     if (savedIds.length === 0) return { items: [], followsCount: showIds.length };
     query = query.in("id", savedIds);
+  } else if (filter === "unread" && readSet.size > 0) {
+    // Exclude already-read briefs in SQL so range()/hasMore paginate correctly.
+    query = query.not("id", "in", `(${[...readSet].join(",")})`);
   }
 
   const { data } = await query.range(offset, offset + limit - 1);
-  let items = ((data ?? []) as unknown as RawBrief[]).map((r) =>
+  const items = ((data ?? []) as unknown as RawBrief[]).map((r) =>
     mapBrief(r, readSet, saveSet),
   );
-  if (filter === "unread") items = items.filter((b) => !b.isRead);
 
   return { items, followsCount: showIds.length };
 }

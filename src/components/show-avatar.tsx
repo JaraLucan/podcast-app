@@ -15,6 +15,8 @@ export function ShowAvatar({
       <img
         src={imageUrl}
         alt={title}
+        width={size}
+        height={size}
         style={dim}
         className="shrink-0 rounded-md object-cover"
         loading="lazy"

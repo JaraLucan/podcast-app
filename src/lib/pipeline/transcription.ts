@@ -11,6 +11,8 @@ import Groq from "groq-sdk";
 
 import type { TranscriptSegment, TranscriptSource } from "@/lib/types/database";
 
+import { assertPublicHttpUrl } from "./net";
+
 const GROQ_MODEL = process.env.GROQ_WHISPER_MODEL ?? "whisper-large-v3";
 // Bias Whisper toward correct spelling of common tech/finance proper nouns and
 // tickers (council: garbage names/tickers → confident LLM nonsense). ≤224 tokens.
@@ -39,6 +41,7 @@ function hasBinary(bin: string): boolean {
 }
 
 async function downloadToTemp(url: string, dir: string): Promise<string> {
+  assertPublicHttpUrl(url); // SSRF guard — url comes from third-party RSS
   const res = await fetch(url, {
     headers: { "User-Agent": "PodBrief/1.0" },
   });
@@ -122,9 +125,18 @@ async function transcribeFile(
     timestamp_granularities: ["segment"],
     prompt: VOCAB_PROMPT,
   });
-  // verbose_json shape
-  const data = res as unknown as { text: string; segments?: GroqSegment[] };
-  return { segments: data.segments ?? [], text: data.text ?? "" };
+  // verbose_json shape — validate, don't trust (Groq may omit/null segments).
+  const data = res as unknown as { text?: unknown; segments?: unknown };
+  const segments: GroqSegment[] = Array.isArray(data.segments)
+    ? (data.segments as unknown[]).filter(
+        (s): s is GroqSegment =>
+          !!s &&
+          typeof (s as GroqSegment).text === "string" &&
+          typeof (s as GroqSegment).start === "number" &&
+          typeof (s as GroqSegment).end === "number",
+      )
+    : [];
+  return { segments, text: typeof data.text === "string" ? data.text : "" };
 }
 
 export async function transcribeWithGroq(
@@ -198,6 +210,7 @@ export async function transcribeWithDeepgram(
 ): Promise<TranscriptResult> {
   const key = process.env.DEEPGRAM_API_KEY;
   if (!key) throw new Error("DEEPGRAM_API_KEY is not set");
+  assertPublicHttpUrl(audioUrl); // SSRF guard — Deepgram will fetch this URL
 
   const params = new URLSearchParams({
     model: DEEPGRAM_MODEL,
