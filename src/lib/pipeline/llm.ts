@@ -34,9 +34,10 @@ function getGroq(): Groq {
   return groqClient;
 }
 
-function provider(): "anthropic" | "groq" {
+export function llmProvider(): "anthropic" | "groq" {
   return process.env.LLM_PROVIDER === "groq" ? "groq" : "anthropic";
 }
+const provider = llmProvider;
 
 function modelFor(tier: LlmTier): string {
   if (provider() === "groq") {
@@ -115,22 +116,92 @@ async function completeAnthropic(
   };
 }
 
+// ── Groq free-tier rate limiting ────────────────────────────────────────────
+// The free tier caps tokens-per-minute (TPM) per model, and a single request
+// (prompt + reserved max_tokens) that exceeds the cap is rejected outright. We
+// (a) proactively pace requests with a per-model token bucket, and (b) retry on
+// 429 honoring the server's "try again in Ns". Callers must still size each
+// request under the cap (see extract.ts chunking).
+const GROQ_TPM: Record<string, number> = {
+  "llama-3.1-8b-instant": 6000,
+  "llama-3.3-70b-versatile": 12000,
+  "llama-3.1-70b-versatile": 12000,
+};
+const GROQ_DEFAULT_TPM = 6000;
+const GROQ_TPM_HEADROOM = 0.92; // stay just under the hard limit
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const groqWindow = new Map<string, { start: number; used: number }>();
+
+/** ~4 chars/token heuristic for budgeting before the server reports usage. */
+function estTokens(s: string): number {
+  return Math.ceil(s.length / 4);
+}
+
+/** Block until `tokens` fit in the current 60s window for `model`. */
+async function reserveGroqTpm(model: string, tokens: number): Promise<void> {
+  const limit = Math.floor((GROQ_TPM[model] ?? GROQ_DEFAULT_TPM) * GROQ_TPM_HEADROOM);
+  const need = Math.min(tokens, limit); // a request can't reserve beyond the cap
+  for (;;) {
+    const now = Date.now();
+    let w = groqWindow.get(model);
+    if (!w || now - w.start >= 60_000) {
+      w = { start: now, used: 0 };
+      groqWindow.set(model, w);
+    }
+    if (w.used + need <= limit) {
+      w.used += need;
+      return;
+    }
+    await sleep(60_000 - (now - w.start) + 250);
+  }
+}
+
+/** Parse Groq's rate-limit "try again in 12.5s" / Retry-After into ms. */
+function retryAfterMs(err: unknown): number {
+  const msg = (err as { message?: string })?.message ?? "";
+  const m = msg.match(/try again in ([\d.]+)\s*s/i);
+  if (m) return Math.ceil(parseFloat(m[1]) * 1000) + 500;
+  const hdr = (err as { headers?: Record<string, string> })?.headers?.["retry-after"];
+  if (hdr && !Number.isNaN(Number(hdr))) return Number(hdr) * 1000 + 500;
+  return 15_000;
+}
+
 async function completeGroq(
   model: string,
   system: string,
   user: string,
   maxTokens: number,
 ): Promise<RawCompletion> {
-  const response = await getGroq().chat.completions.create({
-    model,
-    max_tokens: maxTokens,
-    // JSON mode; our prompts already instruct "Return ONLY valid JSON".
-    response_format: { type: "json_object" },
-    messages: [
-      { role: "system", content: system },
-      { role: "user", content: user },
-    ],
-  });
+  await reserveGroqTpm(model, estTokens(system) + estTokens(user) + maxTokens);
+
+  const create = () =>
+    getGroq().chat.completions.create({
+      model,
+      max_tokens: maxTokens,
+      // JSON mode; our prompts already instruct "Return ONLY valid JSON".
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+    });
+
+  let response;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      response = await create();
+      break;
+    } catch (err) {
+      // 429 = rate limited → wait and retry. Anything else (e.g. 413 request
+      // too large) is not fixable by waiting, so propagate.
+      const status = (err as { status?: number })?.status;
+      if (status !== 429 || attempt >= 3) throw err;
+      await sleep(retryAfterMs(err));
+      groqWindow.delete(model); // fresh window after the forced wait
+    }
+  }
+
   return {
     text: response.choices[0]?.message?.content ?? "",
     tokensIn: response.usage?.prompt_tokens ?? 0,
