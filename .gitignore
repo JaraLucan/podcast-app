@@ -45,3 +45,6 @@ ruvector.db
 *.db
 .claude-flow/
 .ruflo/
+
+.vercel
+.env*
