@@ -35,9 +35,20 @@ export function LoginForm({ next }: { next: string }) {
       </div>
 
       {state.status === "sent" ? (
-        <p className="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
-          {state.message}
-        </p>
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-4 dark:border-emerald-800 dark:bg-emerald-950">
+          <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-200">
+            Your sign-in link is on its way
+          </p>
+          <p className="mt-1.5 text-sm text-emerald-700 dark:text-emerald-300">
+            {state.message}
+          </p>
+          <p className="mt-3 text-xs text-emerald-600 dark:text-emerald-400">
+            Wrong address?{" "}
+            <a href="/login" className="underline underline-offset-2">
+              Try a different email
+            </a>
+          </p>
+        </div>
       ) : (
         <form action={action} className="flex flex-col gap-3">
           <input type="hidden" name="next" value={next} />

@@ -131,17 +131,25 @@ export async function completeOnboarding(formData: FormData) {
   const showIds = formData.getAll("show_id") as string[];
 
   if (showIds.length) {
-    await supabase.from("follows").upsert(
+    const { error: followsError } = await supabase.from("follows").upsert(
       showIds.map((show_id) => ({ user_id: user.id, show_id })),
       { onConflict: "user_id,show_id" },
     );
+    if (followsError) console.error("[onboarding] follows upsert failed:", followsError.message);
   }
-  await supabase
+
+  // Service client bypasses RLS for the profile flag — safe because requireUser()
+  // already verified the session and we're only flipping `onboarded`.
+  const admin = createServiceClient();
+  const { error: profileError } = await admin
     .from("profiles")
-    .upsert(
-      { user_id: user.id, onboarded: true },
-      { onConflict: "user_id" },
-    );
+    .upsert({ user_id: user.id, onboarded: true }, { onConflict: "user_id" });
+
+  if (profileError) {
+    console.error("[onboarding] profile upsert failed:", profileError.message);
+    redirect("/onboarding?error=1");
+  }
+
   redirect("/feed");
 }
 

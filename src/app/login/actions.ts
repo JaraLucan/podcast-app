@@ -61,7 +61,7 @@ export async function signInWithMagicLink(
 
   return {
     status: "sent",
-    message: `Check ${parsed.data} for your sign-in link.`,
+    message: `We just sent a sign-in link to ${parsed.data}. Click it and you're straight in — no password needed. If it doesn't show up within a minute, check your spam folder. The link expires in 60 minutes.`,
   };
 }
 

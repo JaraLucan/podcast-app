@@ -26,7 +26,12 @@ export default async function LoginPage({
           </p>
         </div>
 
-        {error && (
+        {error === "oauth" && (
+          <p className="w-full rounded-lg bg-amber-50 px-4 py-3 text-center text-sm text-amber-700 dark:bg-amber-950 dark:text-amber-200">
+            Google sign-in isn&apos;t available yet. Please use the email link below.
+          </p>
+        )}
+        {error && error !== "oauth" && (
           <p className="w-full rounded-lg bg-red-50 px-4 py-3 text-center text-sm text-red-700 dark:bg-red-950 dark:text-red-200">
             Something went wrong signing you in. Please try again.
           </p>

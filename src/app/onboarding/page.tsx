@@ -25,7 +25,12 @@ const DEFAULTS = new Set([
   "the-compound-and-friends",
 ]);
 
-export default async function OnboardingPage() {
+export default async function OnboardingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/onboarding");
 
@@ -43,6 +48,12 @@ export default async function OnboardingPage() {
         Choose at least 3. We&apos;ll build your feed from new episodes of these
         shows. You can change this anytime.
       </p>
+
+      {error && (
+        <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+          Something went wrong saving your picks. Please try again.
+        </p>
+      )}
 
       <form action={completeOnboarding} className="mt-8 space-y-8">
         {CATEGORIES.map((cat) => {
