@@ -91,7 +91,9 @@ export async function ingestShow(db: DB, showId: string): Promise<IngestResult> 
   };
 }
 
-/** Enqueue an ingest job for every active, non-blocked, non-held show (cron). */
+/** Enqueue an ingest job for every active, non-blocked, non-held show (cron).
+ *  Skips shows that already have a pending or running ingest_show job so
+ *  back-to-back cron ticks don't pile up a duplicate queue. */
 export async function enqueueAllActiveShows(db: DB): Promise<number> {
   const { data: shows } = await db
     .from("shows")
@@ -99,8 +101,25 @@ export async function enqueueAllActiveShows(db: DB): Promise<number> {
     .eq("is_active", true)
     .eq("dmca_hold", false)
     .neq("ingest_source", "blocked");
+
+  const { data: activeJobs } = await db
+    .from("jobs")
+    .select("payload")
+    .eq("type", "ingest_show")
+    .in("status", ["pending", "running"]);
+
+  const alreadyQueued = new Set(
+    (activeJobs ?? []).map(
+      (j) => (j.payload as { show_id: string }).show_id,
+    ),
+  );
+
+  let count = 0;
   for (const s of shows ?? []) {
-    await enqueue(db, "ingest_show", { show_id: s.id });
+    if (!alreadyQueued.has(s.id)) {
+      await enqueue(db, "ingest_show", { show_id: s.id });
+      count++;
+    }
   }
-  return shows?.length ?? 0;
+  return count;
 }
