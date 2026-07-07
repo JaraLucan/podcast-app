@@ -7,7 +7,11 @@ import { createClient } from "@/lib/supabase/server";
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/feed";
+  // Only same-site paths — anything else (absolute URLs, protocol-relative
+  // "//host") falls back to the feed so the redirect can't leave the app.
+  const rawNext = searchParams.get("next") ?? "/feed";
+  const next =
+    rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/feed";
 
   if (code) {
     const supabase = await createClient();
