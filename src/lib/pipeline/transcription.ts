@@ -40,15 +40,49 @@ function hasBinary(bin: string): boolean {
   return res.status === 0;
 }
 
+// Groq validates uploads by filename extension, so the temp file must carry
+// one it accepts. Derive it from the URL, then Content-Type, else assume mp3.
+const AUDIO_EXTS = new Set([
+  "flac", "mp3", "mp4", "mpeg", "mpga", "m4a", "ogg", "wav", "webm",
+]);
+const CONTENT_TYPE_EXT: Record<string, string> = {
+  "audio/mpeg": "mp3",
+  "audio/mp3": "mp3",
+  "audio/mp4": "m4a",
+  "audio/x-m4a": "m4a",
+  "audio/aac": "m4a",
+  "audio/ogg": "ogg",
+  "audio/wav": "wav",
+  "audio/x-wav": "wav",
+  "audio/webm": "webm",
+  "audio/flac": "flac",
+};
+
+function audioExtension(url: string, contentType: string | null): string {
+  try {
+    const fromPath = new URL(url).pathname.split(".").pop()?.toLowerCase();
+    if (fromPath && AUDIO_EXTS.has(fromPath)) return fromPath;
+  } catch {
+    /* fall through to content-type */
+  }
+  const ct = contentType?.split(";")[0].trim().toLowerCase();
+  return (ct && CONTENT_TYPE_EXT[ct]) || "mp3";
+}
+
 async function downloadToTemp(url: string, dir: string): Promise<string> {
   assertPublicHttpUrl(url); // SSRF guard — url comes from third-party RSS
+  // Browser-like UA — some audio CDNs (Substack) 403 bot UAs from datacenter IPs.
   const res = await fetch(url, {
-    headers: { "User-Agent": "PodBrief/1.0" },
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    },
   });
   if (!res.ok || !res.body) {
     throw new Error(`Audio download failed (${res.status}) for ${url}`);
   }
-  const path = join(dir, "audio");
+  const ext = audioExtension(url, res.headers.get("content-type"));
+  const path = join(dir, `audio.${ext}`);
   await streamPipeline(
     Readable.fromWeb(res.body as Parameters<typeof Readable.fromWeb>[0]),
     createWriteStream(path),

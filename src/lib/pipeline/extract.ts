@@ -13,7 +13,16 @@ const MAX_TRANSCRIPT_CHARS = 500_000;
 const GROQ_CHUNK_CHARS = 11_000; // ~2.7k tokens of transcript per call
 const GROQ_EXTRACT_MAX_TOKENS = 1500;
 
-/** One extraction call with a single parse-failure retry. */
+/** Groq's json_object mode aborted ("Failed to generate JSON") — the cheap
+ *  model couldn't hold the schema. Not fixable by re-asking the same model. */
+function isJsonGenerationFailure(err: unknown): boolean {
+  const status = (err as { status?: number })?.status;
+  const msg = (err as { message?: string })?.message ?? "";
+  return status === 400 && /failed to generate json/i.test(msg);
+}
+
+/** One extraction call; on a JSON failure, retry once on the stronger
+ *  editorial-tier model (rare, so the extra token cost is negligible). */
 async function runExtract(
   user: string,
   maxTokens: number,
@@ -27,11 +36,15 @@ async function runExtract(
       schema: extractionSchema,
     });
   } catch (err) {
-    if (!(err instanceof JsonParseError)) throw err;
+    const parseErr = err instanceof JsonParseError;
+    if (!parseErr && !isJsonGenerationFailure(err)) throw err;
+    const feedback = parseErr
+      ? `\n\n${retryFeedback([err.message], err.raw)}`
+      : "";
     return runJsonPass({
-      tier: "extract",
+      tier: "editorial",
       system: EXTRACT_SYSTEM,
-      user: `${user}\n\n${retryFeedback([err.message], err.raw)}`,
+      user: `${user}${feedback}`,
       maxTokens,
       schema: extractionSchema,
     });

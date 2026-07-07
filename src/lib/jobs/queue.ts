@@ -40,12 +40,33 @@ export async function completeJob(db: DB, id: number): Promise<void> {
     .eq("id", id);
 }
 
+/** Provider throttling (Groq free tier) — transient by definition, retry forever. */
+function isRateLimit(message: string): boolean {
+  return /\b429\b|rate.?limit/i.test(message);
+}
+
 /** Mark failed with exponential backoff, or give up after MAX_ATTEMPTS. */
 export async function failJob(
   db: DB,
   job: Job,
   message: string,
 ): Promise<void> {
+  if (isRateLimit(message)) {
+    // Park until the next cron tick and refund the attempt claim_job charged —
+    // a throttled job never deserves to reach the permanent-failure cap.
+    await db
+      .from("jobs")
+      .update({
+        status: "pending",
+        error: message,
+        locked_at: null,
+        attempts: Math.max(0, job.attempts - 1),
+        run_after: new Date(Date.now() + 30 * 60_000).toISOString(),
+      })
+      .eq("id", job.id);
+    return;
+  }
+
   if (job.attempts >= MAX_ATTEMPTS) {
     await db
       .from("jobs")

@@ -91,11 +91,17 @@ export function parseFeed(xml: string): ParsedFeed {
   };
 }
 
+// Substack (and some CDNs) 403 requests that look like bots coming from
+// datacenter IPs (our GitHub Actions runners). A browser-like UA gets through.
+const FEED_HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+  Accept: "application/rss+xml, application/xml, text/xml, */*",
+};
+
 export async function fetchFeed(url: string): Promise<ParsedFeed> {
   assertPublicHttpUrl(url); // SSRF guard
-  const res = await fetch(url, {
-    headers: { "User-Agent": "PodBrief/1.0 (+https://podbrief.com)" },
-  });
+  const res = await fetch(url, { headers: FEED_HEADERS });
   if (!res.ok) {
     throw new Error(`Feed fetch failed (${res.status}) for ${url}`);
   }
