@@ -157,11 +157,17 @@ async function reserveGroqTpm(model: string, tokens: number): Promise<void> {
   }
 }
 
-/** Parse Groq's rate-limit "try again in 12.5s" / Retry-After into ms. */
+/** Parse Groq's rate-limit "try again in 12m19.75s" / "in 12.5s" / Retry-After
+ *  into ms. Daily (TPD) limits come back as minutes — must not read "12m19s"
+ *  as 19 seconds. */
 function retryAfterMs(err: unknown): number {
   const msg = (err as { message?: string })?.message ?? "";
-  const m = msg.match(/try again in ([\d.]+)\s*s/i);
-  if (m) return Math.ceil(parseFloat(m[1]) * 1000) + 500;
+  const m = msg.match(/try again in (?:(\d+)h)?(?:(\d+)m)?([\d.]+)s/i);
+  if (m) {
+    const h = m[1] ? parseInt(m[1], 10) : 0;
+    const min = m[2] ? parseInt(m[2], 10) : 0;
+    return Math.ceil((h * 3600 + min * 60 + parseFloat(m[3])) * 1000) + 500;
+  }
   const hdr = (err as { headers?: Record<string, string> })?.headers?.["retry-after"];
   if (hdr && !Number.isNaN(Number(hdr))) return Number(hdr) * 1000 + 500;
   return 15_000;
@@ -194,10 +200,13 @@ async function completeGroq(
       break;
     } catch (err) {
       // 429 = rate limited → wait and retry. Anything else (e.g. 413 request
-      // too large) is not fixable by waiting, so propagate.
+      // too large) is not fixable by waiting, so propagate. Waits over 2 min
+      // mean the daily (TPD) budget is gone — propagate so the job parks in
+      // the queue instead of stalling the tick with in-process sleeps.
       const status = (err as { status?: number })?.status;
-      if (status !== 429 || attempt >= 3) throw err;
-      await sleep(retryAfterMs(err));
+      const waitMs = retryAfterMs(err);
+      if (status !== 429 || attempt >= 3 || waitMs > 120_000) throw err;
+      await sleep(waitMs);
       groqWindow.delete(model); // fresh window after the forced wait
     }
   }
