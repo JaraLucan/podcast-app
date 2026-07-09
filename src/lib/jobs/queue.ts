@@ -30,7 +30,13 @@ export async function enqueue<T extends JobType>(
 export async function claimJob(db: DB): Promise<Job | null> {
   const { data, error } = await db.rpc("claim_job");
   if (error) throw new Error(`claim_job failed: ${error.message}`);
-  return (data as Job | null) ?? null;
+  const job = data as Job | null;
+  // PostgREST serializes a plpgsql `RETURN NULL` of a composite type as a row
+  // of all-null columns rather than JSON null. A typeless row means "no job
+  // claimable" — without this guard the drain loop treats it as a real job and
+  // dies on "Unknown job type: null" instead of stopping cleanly.
+  if (!job || job.id == null || job.type == null) return null;
+  return job;
 }
 
 export async function completeJob(db: DB, id: number): Promise<void> {
