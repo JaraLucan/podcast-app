@@ -40,9 +40,16 @@ export async function completeJob(db: DB, id: number): Promise<void> {
     .eq("id", id);
 }
 
-/** Provider throttling (Groq free tier) — transient by definition, retry forever. */
-function isRateLimit(message: string): boolean {
-  return /\b429\b|rate.?limit/i.test(message);
+/** Transient provider failures that a later retry can clear — must never burn
+ *  the attempt budget and permanently fail an otherwise-good episode:
+ *   - 429 / rate limit  → Groq free-tier throttling
+ *   - 529 / overloaded  → provider capacity blip
+ *   - credit balance    → billing not topped up yet (whole queue would die
+ *                          the instant a paid key runs dry mid-run) */
+function isTransientFailure(message: string): boolean {
+  return /\b429\b|\b529\b|rate.?limit|overloaded|credit balance|insufficient|quota/i.test(
+    message,
+  );
 }
 
 /** Mark failed with exponential backoff, or give up after MAX_ATTEMPTS. */
@@ -51,9 +58,9 @@ export async function failJob(
   job: Job,
   message: string,
 ): Promise<void> {
-  if (isRateLimit(message)) {
+  if (isTransientFailure(message)) {
     // Park until the next cron tick and refund the attempt claim_job charged —
-    // a throttled job never deserves to reach the permanent-failure cap.
+    // a throttled/blocked job never deserves to reach the permanent-fail cap.
     await db
       .from("jobs")
       .update({
