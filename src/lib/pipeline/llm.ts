@@ -34,10 +34,19 @@ function getGroq(): Groq {
   return groqClient;
 }
 
-export type LlmProviderName = "anthropic" | "groq" | "nvidia" | "gemini";
+export type LlmProviderName =
+  | "anthropic"
+  | "groq"
+  | "nvidia"
+  | "gemini"
+  | "ollama";
 
 function asProvider(v: string | undefined): LlmProviderName | null {
-  return v === "anthropic" || v === "groq" || v === "nvidia" || v === "gemini"
+  return v === "anthropic" ||
+    v === "groq" ||
+    v === "nvidia" ||
+    v === "gemini" ||
+    v === "ollama"
     ? v
     : null;
 }
@@ -73,6 +82,10 @@ function modelFor(tier: LlmTier, provider: LlmProviderName): string {
       return extract
         ? (process.env.GEMINI_MODEL_EXTRACT ?? "gemini-flash-latest")
         : (process.env.GEMINI_MODEL_EDITORIAL ?? "gemini-flash-latest");
+    case "ollama":
+      return extract
+        ? (process.env.OLLAMA_MODEL_EXTRACT ?? "qwen2.5:14b")
+        : (process.env.OLLAMA_MODEL_EDITORIAL ?? "qwen2.5:14b");
     default:
       return extract
         ? (process.env.ANTHROPIC_MODEL_EXTRACT ?? "claude-haiku-4-5")
@@ -252,27 +265,38 @@ async function completeGroq(
 // OpenAI-compatible backends (NVIDIA NIM, Google Gemini's OpenAI shim). Both
 // speak /chat/completions, so one fetch path covers them — only the base URL,
 // key, and model id differ. Free tiers → costUsd 0.
-const OPENAI_COMPAT: Record<string, { baseUrl: string; keyEnv: string }> = {
+const OPENAI_COMPAT: Record<
+  string,
+  { baseUrl: string; keyEnv?: string; timeoutMs: number }
+> = {
   nvidia: {
     baseUrl: "https://integrate.api.nvidia.com/v1",
     keyEnv: "NVIDIA_API_KEY",
+    timeoutMs: 180_000,
   },
   gemini: {
     baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
     keyEnv: "GEMINI_API_KEY",
+    timeoutMs: 180_000,
+  },
+  // Local Ollama — no auth, no rate limits; slower generation, so give it
+  // a generous ceiling (model load + long brief can take minutes).
+  ollama: {
+    baseUrl: process.env.OLLAMA_BASE_URL ?? "http://localhost:11434/v1",
+    timeoutMs: 900_000,
   },
 };
 
 async function completeOpenAICompatible(
-  provider: "nvidia" | "gemini",
+  provider: "nvidia" | "gemini" | "ollama",
   model: string,
   system: string,
   user: string,
   maxTokens: number,
 ): Promise<RawCompletion> {
   const cfg = OPENAI_COMPAT[provider];
-  const key = process.env[cfg.keyEnv];
-  if (!key) throw new Error(`${cfg.keyEnv} is not set`);
+  const key = cfg.keyEnv ? process.env[cfg.keyEnv] : "ollama";
+  if (cfg.keyEnv && !key) throw new Error(`${cfg.keyEnv} is not set`);
 
   const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
     method: "POST",
@@ -289,9 +313,9 @@ async function completeOpenAICompatible(
         { role: "user", content: user },
       ],
     }),
-    // Free 70B endpoints are slow (~20-60s) but a hung request must not stall
-    // the drain loop — abort after 3 min so the job fails and retries later.
-    signal: AbortSignal.timeout(180_000),
+    // Slow endpoints must not stall the drain loop forever — abort per-provider
+    // (remote free tiers ~3 min, local Ollama up to 15 min for a long brief).
+    signal: AbortSignal.timeout(cfg.timeoutMs),
   });
 
   if (!res.ok) {

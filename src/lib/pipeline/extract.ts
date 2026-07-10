@@ -84,7 +84,7 @@ export async function extract(input: {
   // Groq / NVIDIA free tiers → chunk by whole timestamped lines, extract each,
   // merge. NVIDIA's bigger context allows fewer, larger chunks.
   const [chunkChars, maxTokens] =
-    provider === "nvidia"
+    provider === "nvidia" || provider === "ollama"
       ? [NVIDIA_CHUNK_CHARS, NVIDIA_EXTRACT_MAX_TOKENS]
       : [GROQ_CHUNK_CHARS, GROQ_EXTRACT_MAX_TOKENS];
   const chunks = chunkByLines(transcript, chunkChars);
