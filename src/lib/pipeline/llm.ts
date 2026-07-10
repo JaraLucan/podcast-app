@@ -289,9 +289,9 @@ async function completeOpenAICompatible(
         { role: "user", content: user },
       ],
     }),
-    // Free 70B endpoints are slow (~20s) but a hung request must not stall the
-    // whole drain loop — abort after 2 min so the job fails and retries later.
-    signal: AbortSignal.timeout(120_000),
+    // Free 70B endpoints are slow (~20-60s) but a hung request must not stall
+    // the drain loop — abort after 3 min so the job fails and retries later.
+    signal: AbortSignal.timeout(180_000),
   });
 
   if (!res.ok) {

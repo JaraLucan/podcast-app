@@ -53,7 +53,7 @@ export async function completeJob(db: DB, id: number): Promise<void> {
  *   - credit balance    → billing not topped up yet (whole queue would die
  *                          the instant a paid key runs dry mid-run) */
 function isTransientFailure(message: string): boolean {
-  return /\b429\b|\b529\b|rate.?limit|overloaded|credit balance|insufficient|quota/i.test(
+  return /\b429\b|\b5\d\d\b|rate.?limit|overloaded|high demand|unavailable|credit balance|insufficient|quota|timeout|timed out|aborted|ETIMEDOUT|ECONNRESET|fetch failed/i.test(
     message,
   );
 }
