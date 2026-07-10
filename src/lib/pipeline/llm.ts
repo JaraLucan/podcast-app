@@ -34,20 +34,50 @@ function getGroq(): Groq {
   return groqClient;
 }
 
-export function llmProvider(): "anthropic" | "groq" {
-  return process.env.LLM_PROVIDER === "groq" ? "groq" : "anthropic";
-}
-const provider = llmProvider;
+export type LlmProviderName = "anthropic" | "groq" | "nvidia" | "gemini";
 
-function modelFor(tier: LlmTier): string {
-  if (provider() === "groq") {
-    return tier === "extract"
-      ? (process.env.GROQ_MODEL_EXTRACT ?? "llama-3.1-8b-instant")
-      : (process.env.GROQ_MODEL_EDITORIAL ?? "llama-3.3-70b-versatile");
+function asProvider(v: string | undefined): LlmProviderName | null {
+  return v === "anthropic" || v === "groq" || v === "nvidia" || v === "gemini"
+    ? v
+    : null;
+}
+
+/** Global default provider (LLM_PROVIDER); anthropic if unset/unknown. */
+export function llmProvider(): LlmProviderName {
+  return asProvider(process.env.LLM_PROVIDER) ?? "anthropic";
+}
+
+/** Provider for a specific pass — lets extraction and editorial run on
+ *  different backends (e.g. free NVIDIA Llama for extraction, one pinned
+ *  Gemini for every final brief). Falls back to the global default. */
+export function providerForTier(tier: LlmTier): LlmProviderName {
+  const per =
+    tier === "extract"
+      ? process.env.EXTRACT_PROVIDER
+      : process.env.EDITORIAL_PROVIDER;
+  return asProvider(per) ?? llmProvider();
+}
+
+function modelFor(tier: LlmTier, provider: LlmProviderName): string {
+  const extract = tier === "extract";
+  switch (provider) {
+    case "groq":
+      return extract
+        ? (process.env.GROQ_MODEL_EXTRACT ?? "llama-3.1-8b-instant")
+        : (process.env.GROQ_MODEL_EDITORIAL ?? "llama-3.3-70b-versatile");
+    case "nvidia":
+      return extract
+        ? (process.env.NVIDIA_MODEL_EXTRACT ?? "meta/llama-3.3-70b-instruct")
+        : (process.env.NVIDIA_MODEL_EDITORIAL ?? "meta/llama-3.3-70b-instruct");
+    case "gemini":
+      return extract
+        ? (process.env.GEMINI_MODEL_EXTRACT ?? "gemini-flash-latest")
+        : (process.env.GEMINI_MODEL_EDITORIAL ?? "gemini-flash-latest");
+    default:
+      return extract
+        ? (process.env.ANTHROPIC_MODEL_EXTRACT ?? "claude-haiku-4-5")
+        : (process.env.ANTHROPIC_MODEL_EDITORIAL ?? "claude-sonnet-4-6");
   }
-  return tier === "extract"
-    ? (process.env.ANTHROPIC_MODEL_EXTRACT ?? "claude-haiku-4-5")
-    : (process.env.ANTHROPIC_MODEL_EDITORIAL ?? "claude-sonnet-4-6");
 }
 
 export class JsonParseError extends Error {
@@ -219,6 +249,69 @@ async function completeGroq(
   };
 }
 
+// OpenAI-compatible backends (NVIDIA NIM, Google Gemini's OpenAI shim). Both
+// speak /chat/completions, so one fetch path covers them — only the base URL,
+// key, and model id differ. Free tiers → costUsd 0.
+const OPENAI_COMPAT: Record<string, { baseUrl: string; keyEnv: string }> = {
+  nvidia: {
+    baseUrl: "https://integrate.api.nvidia.com/v1",
+    keyEnv: "NVIDIA_API_KEY",
+  },
+  gemini: {
+    baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
+    keyEnv: "GEMINI_API_KEY",
+  },
+};
+
+async function completeOpenAICompatible(
+  provider: "nvidia" | "gemini",
+  model: string,
+  system: string,
+  user: string,
+  maxTokens: number,
+): Promise<RawCompletion> {
+  const cfg = OPENAI_COMPAT[provider];
+  const key = process.env[cfg.keyEnv];
+  if (!key) throw new Error(`${cfg.keyEnv} is not set`);
+
+  const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: maxTokens,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+    }),
+    // Free 70B endpoints are slow (~20s) but a hung request must not stall the
+    // whole drain loop — abort after 2 min so the job fails and retries later.
+    signal: AbortSignal.timeout(120_000),
+  });
+
+  if (!res.ok) {
+    // Surface status so failJob can park 429/quota errors instead of killing
+    // the job (see isTransientFailure in jobs/queue.ts).
+    throw new Error(`${provider} ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  }
+
+  const data = (await res.json()) as {
+    choices?: { message?: { content?: string } }[];
+    usage?: { prompt_tokens?: number; completion_tokens?: number };
+  };
+  return {
+    text: data.choices?.[0]?.message?.content ?? "",
+    tokensIn: data.usage?.prompt_tokens ?? 0,
+    tokensOut: data.usage?.completion_tokens ?? 0,
+    costUsd: 0,
+  };
+}
+
 /**
  * Run one JSON-returning completion and validate against a zod schema. Throws
  * JsonParseError (carrying the raw text) on parse/validation failure so callers
@@ -237,11 +330,14 @@ export async function runJsonPass<T>({
   maxTokens: number;
   schema: z.ZodType<T>;
 }): Promise<PassResult<T>> {
-  const model = modelFor(tier);
+  const provider = providerForTier(tier);
+  const model = modelFor(tier, provider);
   const completion =
-    provider() === "groq"
+    provider === "groq"
       ? await completeGroq(model, system, user, maxTokens)
-      : await completeAnthropic(model, system, user, maxTokens);
+      : provider === "anthropic"
+        ? await completeAnthropic(model, system, user, maxTokens)
+        : await completeOpenAICompatible(provider, model, system, user, maxTokens);
 
   const parsed = extractJson(completion.text);
   const result = schema.safeParse(parsed);

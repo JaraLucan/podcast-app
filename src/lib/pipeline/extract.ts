@@ -1,4 +1,9 @@
-import { JsonParseError, llmProvider, runJsonPass, type PassResult } from "./llm";
+import {
+  JsonParseError,
+  providerForTier,
+  runJsonPass,
+  type PassResult,
+} from "./llm";
 import { buildExtractUser, EXTRACT_SYSTEM, retryFeedback } from "./prompts";
 import { extractionSchema, type Extraction } from "./types";
 
@@ -12,6 +17,10 @@ const MAX_TRANSCRIPT_CHARS = 500_000;
 // merge. Each chunk is sized so (system + chunk + output) stays under 6000.
 const GROQ_CHUNK_CHARS = 11_000; // ~2.7k tokens of transcript per call
 const GROQ_EXTRACT_MAX_TOKENS = 1500;
+// NVIDIA free-tier Llama 3.3 70B has a 128k context but a per-request token
+// ceiling on the free endpoint — chunk larger than Groq but still map-reduce.
+const NVIDIA_CHUNK_CHARS = 48_000; // ~12k tokens of transcript per call
+const NVIDIA_EXTRACT_MAX_TOKENS = 3000;
 
 /** Groq's json_object mode aborted ("Failed to generate JSON") — the cheap
  *  model couldn't hold the schema. Not fixable by re-asking the same model. */
@@ -62,17 +71,23 @@ export async function extract(input: {
       ? input.transcript.slice(0, MAX_TRANSCRIPT_CHARS)
       : input.transcript;
 
-  // Anthropic has a large context + high rate limits → one call over the whole
-  // transcript (best cross-references, no merge artifacts).
-  if (llmProvider() !== "groq") {
+  // Anthropic and Gemini have large context + high limits → one call over the
+  // whole transcript (best cross-references, no merge artifacts).
+  const provider = providerForTier("extract");
+  if (provider === "anthropic" || provider === "gemini") {
     return runExtract(
       buildExtractUser({ ...input, transcript }),
       ANTHROPIC_MAX_TOKENS,
     );
   }
 
-  // Groq free tier → chunk by whole timestamped lines, extract each, merge.
-  const chunks = chunkByLines(transcript, GROQ_CHUNK_CHARS);
+  // Groq / NVIDIA free tiers → chunk by whole timestamped lines, extract each,
+  // merge. NVIDIA's bigger context allows fewer, larger chunks.
+  const [chunkChars, maxTokens] =
+    provider === "nvidia"
+      ? [NVIDIA_CHUNK_CHARS, NVIDIA_EXTRACT_MAX_TOKENS]
+      : [GROQ_CHUNK_CHARS, GROQ_EXTRACT_MAX_TOKENS];
+  const chunks = chunkByLines(transcript, chunkChars);
   const parts: PassResult<Extraction>[] = [];
   for (const chunk of chunks) {
     parts.push(
@@ -82,7 +97,7 @@ export async function extract(input: {
           episodeTitle: input.episodeTitle,
           transcript: chunk,
         }),
-        GROQ_EXTRACT_MAX_TOKENS,
+        maxTokens,
       ),
     );
   }
