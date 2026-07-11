@@ -293,10 +293,18 @@ async function completeOpenAICompatible(
   system: string,
   user: string,
   maxTokens: number,
+  jsonSchema?: unknown,
 ): Promise<RawCompletion> {
   const cfg = OPENAI_COMPAT[provider];
   const key = cfg.keyEnv ? process.env[cfg.keyEnv] : "ollama";
   if (cfg.keyEnv && !key) throw new Error(`${cfg.keyEnv} is not set`);
+
+  // Constrained decoding when a schema is supplied (Ollama): the model is
+  // grammar-forced to the exact shape, so small models can't simplify
+  // `[{text,ts_seconds}]` into `[string]`. Falls back to plain JSON mode.
+  const responseFormat = jsonSchema
+    ? { type: "json_schema", json_schema: { name: "result", strict: true, schema: jsonSchema } }
+    : { type: "json_object" };
 
   const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
     method: "POST",
@@ -307,7 +315,10 @@ async function completeOpenAICompatible(
     body: JSON.stringify({
       model,
       max_tokens: maxTokens,
-      response_format: { type: "json_object" },
+      // Deterministic decoding — small local/free models only reliably hold the
+      // exact JSON field names at temperature 0.
+      temperature: 0,
+      response_format: responseFormat,
       messages: [
         { role: "system", content: system },
         { role: "user", content: user },
@@ -356,12 +367,23 @@ export async function runJsonPass<T>({
 }): Promise<PassResult<T>> {
   const provider = providerForTier(tier);
   const model = modelFor(tier, provider);
+  // Ollama honors constrained decoding from a JSON schema — hand it one so the
+  // local model is forced to the exact shape (other backends use plain JSON).
+  const jsonSchema =
+    provider === "ollama" ? z.toJSONSchema(schema) : undefined;
   const completion =
     provider === "groq"
       ? await completeGroq(model, system, user, maxTokens)
       : provider === "anthropic"
         ? await completeAnthropic(model, system, user, maxTokens)
-        : await completeOpenAICompatible(provider, model, system, user, maxTokens);
+        : await completeOpenAICompatible(
+            provider,
+            model,
+            system,
+            user,
+            maxTokens,
+            jsonSchema,
+          );
 
   const parsed = extractJson(completion.text);
   const result = schema.safeParse(parsed);

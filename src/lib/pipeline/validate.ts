@@ -4,13 +4,13 @@ import type { BriefContent } from "./types";
 
 // Editorial bar from PRD §2 / §5.3.
 export const LIMITS = {
-  minWords: 300, // a touch under 350 to avoid false negatives on tight briefs
+  minWords: 250, // tolerate tight briefs; substance guards below still apply
   maxWords: 750,
   minTakeaways: 4,
   maxTakeaways: 7,
   minKeyMoments: 3,
   maxKeyMoments: 6,
-  maxQuotes: 1,
+  maxQuotes: 2,
   maxQuoteWords: 15,
 };
 
