@@ -14,7 +14,10 @@ import {
 } from "./types";
 import { validateBrief } from "./validate";
 
-const MAX_TOKENS = 4000;
+// ~2300 words of JSON (up to 14 cards) needs headroom beyond raw prose tokens
+// for field names/braces/escaping — 4000 was cutting it close and risked
+// truncated JSON on the richest episodes.
+const MAX_TOKENS = 6000;
 
 export type EditorialResult = {
   result: PassResult<BriefContent>;

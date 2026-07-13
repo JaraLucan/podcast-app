@@ -2,15 +2,16 @@ import type { QualityFlags } from "@/lib/types/database";
 
 import type { BriefContent } from "./types";
 
-// Editorial bar from PRD §2 / §5.3. Sized for a genuine 3-5 min read
-// (readMinutes ≈ words/220), not a skimmable fact dump.
+// Editorial bar from PRD §2 / §5.3. Sized for a genuine, comprehensive
+// 5-10 min read (readMinutes ≈ words/220) — a detailed breakdown a reader
+// could substitute for listening, not a highlight reel of the top hits.
 export const LIMITS = {
   minWords: 600,
-  maxWords: 1300,
+  maxWords: 2300,
   minTakeaways: 6,
-  maxTakeaways: 8,
+  maxTakeaways: 14,
   minKeyMoments: 3,
-  maxKeyMoments: 7,
+  maxKeyMoments: 8,
   maxQuotes: 2,
   maxQuoteWords: 15,
 };
@@ -145,12 +146,16 @@ export function validateBrief(
     issues.push(`Contains banned filler phrasing (${fillerHit}).`);
   }
 
-  // Hard specifics: at least half the takeaways must contain a concrete fact.
+  // Hard specifics: at least a third of takeaways must contain a concrete
+  // fact (number, acronym, or named entity). Loose on purpose — conceptual
+  // episodes (strategy, values, frameworks) legitimately run lower on hard
+  // numbers than earnings-heavy ones, and a well-explained argument is still
+  // a real takeaway, not filler.
   if (brief.takeaways.length > 0) {
     const withSpecific = brief.takeaways.filter((t) =>
       hasConcreteSpecific(takeawayText(t)),
     ).length;
-    if (withSpecific < Math.ceil(brief.takeaways.length / 2)) {
+    if (withSpecific < Math.ceil(brief.takeaways.length / 3)) {
       issues.push(
         `Too few takeaways with a concrete specific: ${withSpecific}/${brief.takeaways.length}.`,
       );
