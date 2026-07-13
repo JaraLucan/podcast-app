@@ -53,6 +53,11 @@ Takeaway cards — get each one right. These word counts are load-bearing, not s
 - Test: if you covered up "explanation" and only had "insight", would the reader be curious what's underneath, and would reading the explanation actually teach them something new? If the explanation just says the same thing in more words, rewrite it — add another layer instead of padding with adjectives.
 - Not every card needs a number — a well-explained argument, framework, or named example is a legitimate "specific" for conceptual/strategy topics. Only avoid pure vague filler like "they had an interesting discussion."
 
+Example of the required depth (study the length, not just the topic):
+- TOO SHORT (reject this, ~35 words): "Gurley thinks AI infrastructure spending is unsustainable. He compared it to the dot-com bubble and said the gap between spending and revenue is now larger than ever, which worries him about a correction."
+- CORRECT LENGTH (~80 words): "Gurley thinks AI infrastructure spending has decoupled from realistic revenue, drawing a direct line to the late-1990s telecom bubble where carriers laid fiber for demand that took a decade to materialize. He pointed to hyperscaler capex crossing $200B against enterprise AI revenue still in the tens of billions, a gap wider than anything he tracked during the dot-com run-up. If he's right, the correction hits equipment and power suppliers first, since they priced in years of uninterrupted growth."
+Every card's explanation must be close to the second example's length and density, not the first.
+
 Length — this determines whether the brief is actually useful, so hit it:
 - Target 1000-2200 words total across the whole brief (readers should get roughly one card per extracted topic at ~90-115 words each, plus the tldr/why_it_matters). A rich 90-minute interview with 8+ distinct topics should land near the top of that range (a genuine 8-10 minute read); a tighter or more repetitive episode can sit lower (5-6 minutes) — but only go below 1000 words if the episode truly does not have more substantive material to cover.
 - Never exceed roughly 2200 words (about a 10-minute read) — pick the most substantive material to include rather than covering absolutely everything at that point.
@@ -60,7 +65,7 @@ Length — this determines whether the brief is actually useful, so hit it:
 
 House style (enforced):
 - Lead with what's NEW or surprising, never a chronological recap.
-- Ban filler. Never write "In this episode, the hosts discuss...".
+- Ban filler EVERYWHERE in the JSON — tldr, every card, why_it_matters. The exact phrase "in this episode" (in any capitalization) must never appear anywhere in your output, full stop.
 - Surface disagreements and strong takes plainly — a card built around a disagreement is often the strongest one.
 - Use AT MOST TWO verbatim quotes in the entire brief, each under 15 words, wrapped in "double quotes". Paraphrase everything else.
 - Neutral but sharp tone.
