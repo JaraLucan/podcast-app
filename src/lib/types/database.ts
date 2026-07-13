@@ -27,6 +27,10 @@ export type KeyMoment = { ts_seconds: number; label: string };
 
 export type BriefNumber = { label: string; value: string; context?: string };
 
+// A takeaway is either a rich Deepstash-style card (current format) or a
+// plain string (briefs generated before the card format existed).
+export type TakeawayItem = string | { insight: string; explanation: string };
+
 export type QualityFlags = {
   passed: boolean;
   issues: string[];
@@ -166,7 +170,7 @@ export type Database = {
           id: string;
           episode_id: string;
           tldr: string | null;
-          takeaways: string[] | null;
+          takeaways: TakeawayItem[] | null;
           key_moments: KeyMoment[] | null;
           numbers: BriefNumber[] | null;
           why_it_matters: string | null;
@@ -184,7 +188,7 @@ export type Database = {
           id?: string;
           episode_id: string;
           tldr?: string | null;
-          takeaways?: string[] | null;
+          takeaways?: TakeawayItem[] | null;
           key_moments?: KeyMoment[] | null;
           numbers?: BriefNumber[] | null;
           why_it_matters?: string | null;

@@ -2,14 +2,15 @@ import type { QualityFlags } from "@/lib/types/database";
 
 import type { BriefContent } from "./types";
 
-// Editorial bar from PRD §2 / §5.3.
+// Editorial bar from PRD §2 / §5.3. Sized for a genuine 3-5 min read
+// (readMinutes ≈ words/220), not a skimmable fact dump.
 export const LIMITS = {
-  minWords: 250, // tolerate tight briefs; substance guards below still apply
-  maxWords: 750,
-  minTakeaways: 4,
-  maxTakeaways: 7,
+  minWords: 600,
+  maxWords: 1300,
+  minTakeaways: 6,
+  maxTakeaways: 8,
   minKeyMoments: 3,
-  maxKeyMoments: 6,
+  maxKeyMoments: 7,
   maxQuotes: 2,
   maxQuoteWords: 15,
 };
@@ -36,11 +37,16 @@ export function hasConcreteSpecific(text: string): boolean {
   );
 }
 
+/** Flatten a takeaway card to its rendered text. */
+function takeawayText(t: BriefContent["takeaways"][number]): string {
+  return `${t.insight} ${t.explanation}`;
+}
+
 /** Total human-readable word count across the rendered brief. */
 export function countBriefWords(brief: BriefContent): number {
   const parts: string[] = [
     brief.tldr,
-    ...brief.takeaways,
+    ...brief.takeaways.map(takeawayText),
     brief.why_it_matters,
     ...brief.key_moments.map((m) => m.label),
     ...brief.numbers.map((n) =>
@@ -60,7 +66,7 @@ export function findQuotes(text: string): string[] {
 function allProse(brief: BriefContent): string {
   return [
     brief.tldr,
-    ...brief.takeaways,
+    ...brief.takeaways.map(takeawayText),
     brief.why_it_matters,
     ...brief.key_moments.map((m) => m.label),
   ].join(" ");
@@ -98,7 +104,18 @@ export function validateBrief(
     );
   }
   brief.takeaways.forEach((t, i) => {
-    if (!t.trim()) issues.push(`Takeaway ${i + 1} is empty.`);
+    if (!t.insight.trim()) issues.push(`Takeaway ${i + 1} has an empty insight.`);
+    if (!t.explanation.trim())
+      issues.push(`Takeaway ${i + 1} has an empty explanation.`);
+    // The explanation must teach something beyond the insight, not just
+    // reword it — a near-duplicate is a lazy card, not a Deepstash-style one.
+    if (
+      t.insight.trim() &&
+      t.explanation.trim() &&
+      t.explanation.trim().toLowerCase() === t.insight.trim().toLowerCase()
+    ) {
+      issues.push(`Takeaway ${i + 1}'s explanation just repeats the insight.`);
+    }
   });
 
   // Key moments count
@@ -130,7 +147,9 @@ export function validateBrief(
 
   // Hard specifics: at least half the takeaways must contain a concrete fact.
   if (brief.takeaways.length > 0) {
-    const withSpecific = brief.takeaways.filter(hasConcreteSpecific).length;
+    const withSpecific = brief.takeaways.filter((t) =>
+      hasConcreteSpecific(takeawayText(t)),
+    ).length;
     if (withSpecific < Math.ceil(brief.takeaways.length / 2)) {
       issues.push(
         `Too few takeaways with a concrete specific: ${withSpecific}/${brief.takeaways.length}.`,

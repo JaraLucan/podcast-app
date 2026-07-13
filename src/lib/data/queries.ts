@@ -9,13 +9,19 @@ import type {
   KeyMoment,
   Show,
   ShowCategory,
+  TakeawayItem,
 } from "@/lib/types/database";
 
 // ── Shapes the UI consumes ──────────────────────────────────────────────────
+// Rich cards (insight + explanation) for briefs generated after the
+// Deepstash-style rewrite; plain strings for older briefs stored before it —
+// the reader renders both without a data migration.
+export type Takeaway = TakeawayItem;
+
 export type BriefListItem = {
   id: string;
   tldr: string | null;
-  takeaways: string[];
+  takeaways: Takeaway[];
   numbers: BriefNumber[];
   keyMoments: KeyMoment[];
   whyItMatters: string | null;
@@ -50,7 +56,7 @@ const BRIEF_SELECT =
 type RawBrief = {
   id: string;
   tldr: string | null;
-  takeaways: string[] | null;
+  takeaways: Takeaway[] | null;
   numbers: BriefNumber[] | null;
   key_moments: KeyMoment[] | null;
   why_it_matters: string | null;

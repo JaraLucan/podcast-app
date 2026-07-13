@@ -5,6 +5,7 @@ import {
   listenMinutes,
   readMinutes,
   relativeTime,
+  takeawayText,
 } from "@/lib/utils/format";
 
 import { SaveButton } from "./save-button";
@@ -13,7 +14,7 @@ import { ShowAvatar } from "./show-avatar";
 export function BriefCard({ brief }: { brief: BriefListItem }) {
   const href = `/b/${brief.show.slug}/${brief.episode.slug}`;
   const read = readMinutes(
-    [brief.tldr, ...brief.takeaways, brief.whyItMatters]
+    [brief.tldr, ...brief.takeaways.map(takeawayText), brief.whyItMatters]
       .filter(Boolean)
       .join(" "),
   );

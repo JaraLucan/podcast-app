@@ -41,9 +41,19 @@ export type Extraction = z.infer<typeof extractionSchema>;
 
 // ── Pass 2: Editorial brief (strong model) ──────────────────────────────────
 // Maps 1:1 onto the `briefs` table jsonb columns.
+// Each takeaway is a Deepstash-style card: a punchy headline (`insight`) plus
+// a short body (`explanation`) that actually teaches something — the
+// reasoning, mechanism, or implication — rather than a one-line fact dump.
+export const takeawaySchema = z.object({
+  insight: z.string(),
+  explanation: z.string(),
+});
+
+export type Takeaway = z.infer<typeof takeawaySchema>;
+
 export const briefSchema = z.object({
   tldr: z.string(),
-  takeaways: z.array(z.string()),
+  takeaways: z.array(takeawaySchema),
   key_moments: z.array(
     z.object({
       ts_seconds: z.number(),

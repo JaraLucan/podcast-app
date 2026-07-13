@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ShowAvatar } from "@/components/show-avatar";
 import { getCatalog, getLatestBriefs } from "@/lib/data/queries";
 import { createClient } from "@/lib/supabase/server";
-import { readMinutes } from "@/lib/utils/format";
+import { readMinutes, takeawayText } from "@/lib/utils/format";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -92,7 +92,9 @@ export default async function Home() {
                 )}
                 <span className="mt-3 block text-xs font-medium text-neutral-400">
                   {readMinutes(
-                    [b.tldr, ...b.takeaways].filter(Boolean).join(" "),
+                    [b.tldr, ...b.takeaways.map(takeawayText)]
+                      .filter(Boolean)
+                      .join(" "),
                   )}{" "}
                   min read
                 </span>

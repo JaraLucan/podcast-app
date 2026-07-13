@@ -6,6 +6,7 @@ import {
   formatTimestamp,
   listenMinutes,
   readMinutes,
+  takeawayText,
   youtubeTimestampUrl,
 } from "@/lib/utils/format";
 
@@ -44,7 +45,7 @@ export function BriefReader({ brief }: { brief: BriefListItem }) {
     brief.episode.audioUrl ??
     null;
   const read = readMinutes(
-    [brief.tldr, ...brief.takeaways, brief.whyItMatters]
+    [brief.tldr, ...brief.takeaways.map(takeawayText), brief.whyItMatters]
       .filter(Boolean)
       .join(" "),
   );
@@ -106,13 +107,27 @@ export function BriefReader({ brief }: { brief: BriefListItem }) {
           <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
             Key takeaways
           </h2>
-          <ul className="mt-3 space-y-3">
-            {brief.takeaways.map((t, i) => (
-              <li key={i} className="flex gap-3 leading-relaxed">
-                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-neutral-400" />
-                <span>{t}</span>
-              </li>
-            ))}
+          <ul className="mt-4 space-y-4">
+            {brief.takeaways.map((t, i) =>
+              typeof t === "string" ? (
+                <li key={i} className="flex gap-3 leading-relaxed">
+                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-neutral-400" />
+                  <span>{t}</span>
+                </li>
+              ) : (
+                <li
+                  key={i}
+                  className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900"
+                >
+                  <p className="font-medium leading-snug text-neutral-900 dark:text-neutral-100">
+                    {t.insight}
+                  </p>
+                  <p className="mt-1.5 leading-relaxed text-neutral-600 dark:text-neutral-400">
+                    {t.explanation}
+                  </p>
+                </li>
+              ),
+            )}
           </ul>
         </section>
       )}

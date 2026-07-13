@@ -22,6 +22,15 @@ export function readMinutes(text: string): number {
   return Math.max(1, Math.round(words / 220));
 }
 
+/** Flatten a takeaway to plain text — handles both the rich {insight,
+ *  explanation} card shape and legacy plain-string takeaways from briefs
+ *  generated before the card format existed. */
+export function takeawayText(
+  t: string | { insight: string; explanation: string },
+): string {
+  return typeof t === "string" ? t : `${t.insight} ${t.explanation}`;
+}
+
 export function formatDate(iso: string | null): string {
   if (!iso) return "";
   return new Date(iso).toLocaleDateString("en-US", {
