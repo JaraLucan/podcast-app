@@ -95,6 +95,32 @@ ${JSON.stringify(extraction, null, 2)}
 Write the brief now as a single JSON object.`;
 }
 
+// ── Pass 3 (conditional): expand underdeveloped cards ──────────────────────
+// Local/small models reliably nail the insight but often under-shoot the
+// explanation word target even with explicit numbers + an example in the
+// main prompt. Rather than regenerate the whole brief, do one targeted pass
+// that only rewrites the explanations that came in too short.
+export const EXPAND_SYSTEM = `You are expanding underdeveloped takeaway cards from a podcast brief so they actually teach the reader something, not padding them with filler.
+
+For each card below, the "insight" is fine but the "explanation" is too short. Rewrite ONLY the explanation to be 60-90 words (4-6 full sentences) that teaches the insight: the reasoning or mechanism behind it, specific evidence/numbers/names from the EXTRACTED FACTS provided, a comparison to something familiar, or a concrete consequence. Pull in genuinely new information from the extracted facts — do not just add adjectives, hedging, or repeat the insight in different words.
+
+Return ONLY valid JSON matching this exact shape (no prose, no markdown fences):
+{ "cards": [{ "insight": string, "explanation": string }] }
+"cards" must have the EXACT SAME LENGTH AND ORDER as the input cards. Keep each "insight" exactly as given, character for character — only the "explanation" values should change. Output nothing but the JSON object.`;
+
+export function buildExpandUser(input: {
+  extraction: Extraction;
+  shortCards: { insight: string; explanation: string }[];
+}): string {
+  return `EXTRACTED FACTS (JSON, for evidence/specifics to pull into the expanded explanations):
+${JSON.stringify(input.extraction, null, 2)}
+
+CARDS TO EXPAND (rewrite "explanation" only, same order, same count):
+${JSON.stringify(input.shortCards, null, 2)}
+
+Return the expanded array now.`;
+}
+
 /** Appended to a retry when the first attempt failed validation. */
 export function retryFeedback(errors: string[], previousRaw: string): string {
   return `Your previous response was rejected for these reasons:

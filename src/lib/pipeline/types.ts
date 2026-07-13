@@ -81,3 +81,10 @@ export type EditorialContext = {
   /** TL;DRs of recent briefs from the same show + same category (last 7 days). */
   recentContext: string[];
 };
+
+// ── Pass 3 (conditional): expand underdeveloped cards ──────────────────────
+// Object-wrapped (not a bare array) so `json_object` response mode works
+// identically across every provider, not just Ollama's schema-constrained one.
+export const expandedCardsSchema = z.object({
+  cards: z.array(takeawaySchema),
+});

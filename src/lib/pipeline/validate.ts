@@ -25,7 +25,7 @@ const FILLER_PATTERNS = [
   /\bthis episode (covers|explores)\b/i,
 ];
 
-function words(text: string): number {
+export function words(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
